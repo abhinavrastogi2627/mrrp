@@ -6,6 +6,8 @@ pub use mrrp_filter as filter;
 pub use mrrp_geo as geo;
 #[cfg(feature = "rtl_sdr")]
 pub use mrrp_rtl_sdr as rtl_sdr;
+#[cfg(feature = "rtl_tcp")]
+pub use mrrp_rtl_tcp as rtl_tcp;
 #[cfg(feature = "sat")]
 pub use mrrp_sat as sat;
 
