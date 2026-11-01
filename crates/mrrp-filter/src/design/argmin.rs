@@ -98,7 +98,7 @@ where
             .iter()
             .enumerate()
             .map(|(i, h)| {
-                let mut f = i as f32 / self.parameters.fft_size as f32;
+                let mut f = i as f64 / self.parameters.fft_size as f64;
                 if f >= 0.5 {
                     f -= 1.0;
                 }
@@ -106,13 +106,13 @@ where
                 self.parameters
                     .filter_specification
                     .frequency_response_at(f)
-                    .map(|h_id| (h_id.amplitude - h.norm()).powi(2))
+                    .map(|h_id| (h_id.amplitude - h.norm() as f64).powi(2))
                     .unwrap_or_default()
             })
-            .sum::<f32>()
-            / h.len() as f32;
+            .sum::<f64>()
+            / h.len() as f64;
 
-        Ok(error)
+        Ok(error as f32)
     }
 }
 

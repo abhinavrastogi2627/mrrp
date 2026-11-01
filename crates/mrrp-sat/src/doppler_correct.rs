@@ -6,7 +6,10 @@ use chrono::{
 };
 use mrrp_core::{
     sample::Complex,
-    signal::GetSampleRate,
+    signal::{
+        Frequency,
+        GetSampleRate,
+    },
 };
 use mrrp_util::signal::{
     ComplexSinusoid,
@@ -42,8 +45,8 @@ use crate::{
 pub struct DopplerCorrection {
     satellite_states: Vec<SatelliteState>,
     reference_state: ReferenceState,
-    pub nominal_frequency: f32,
-    pub fixed_offset: f32,
+    pub nominal_frequency: Frequency,
+    pub fixed_offset: Frequency,
     sinusoid: ComplexSinusoid,
     start_time: DateTime<Utc>,
     sample_index: usize,
@@ -54,10 +57,10 @@ impl DopplerCorrection {
     pub fn from_satellite(
         satellite: &Satellite,
         reference_state: ReferenceState,
-        nominal_frequency: f32,
+        nominal_frequency: Frequency,
         start_time: DateTime<Utc>,
         predict_interval: Duration,
-        sample_rate: f32,
+        sample_rate: Frequency,
         duration: Duration,
     ) -> Result<Self, Error> {
         tracing::debug!(
@@ -71,8 +74,8 @@ impl DopplerCorrection {
 
         // calculate timing information
         let num_samples_per_interval =
-            (predict_interval.as_secs_f32() * sample_rate).floor() as usize;
-        let effective_predict_interval = num_samples_per_interval as f32 / sample_rate;
+            (predict_interval.as_secs_f64() * sample_rate).floor() as usize;
+        let effective_predict_interval = num_samples_per_interval as f64 / sample_rate;
 
         tracing::debug!(
             ?num_intervals,
@@ -82,7 +85,7 @@ impl DopplerCorrection {
 
         // calculate exact timestamps for which we want satellite states
         let times = (0..num_intervals)
-            .map(|i| start_time + Duration::from_secs_f32(effective_predict_interval * i as f32))
+            .map(|i| start_time + Duration::from_secs_f64(effective_predict_interval * i as f64))
             .collect::<Vec<_>>();
 
         // predict satellite states for the time spanned by the source
@@ -100,8 +103,8 @@ impl DopplerCorrection {
     pub fn from_states(
         satellite_states: Vec<SatelliteState>,
         reference_state: ReferenceState,
-        nominal_frequency: f32,
-        sample_rate: f32,
+        nominal_frequency: Frequency,
+        sample_rate: Frequency,
     ) -> Self {
         // note: we initialize the frequency to 1 Hz, but it will be updated
         // before generating the first sample
@@ -140,7 +143,7 @@ impl SignalGenerator for DopplerCorrection {
         // or should we just calculate the delta time per sample ahead of time
         // and use that? our concern was that this would accumulate error.
         let time = self.start_time
-            + Duration::from_secs_f32(self.sample_index as f32 / self.sinusoid.sample_rate());
+            + Duration::from_secs_f64(self.sample_index as f64 / self.sinusoid.sample_rate());
 
         // current state we're at
         let mut current_state = &self.satellite_states[self.state_index];
@@ -154,7 +157,7 @@ impl SignalGenerator for DopplerCorrection {
         }
 
         let relative_state = current_state.relative(&self.reference_state);
-        let doppler_shift = relative_state.doppler_shift(self.nominal_frequency as f64) as f32;
+        let doppler_shift = relative_state.doppler_shift(self.nominal_frequency);
 
         self.sample_index += 1;
 
@@ -165,7 +168,7 @@ impl SignalGenerator for DopplerCorrection {
 }
 
 impl GetSampleRate for DopplerCorrection {
-    fn sample_rate(&self) -> f32 {
+    fn sample_rate(&self) -> Frequency {
         self.sinusoid.sample_rate()
     }
 }

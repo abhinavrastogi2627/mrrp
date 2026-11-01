@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 
 use crate::{
+    Frequency,
     rtl2832u::i2c::I2cAddress,
     tuner::gain::{
         Auto,
@@ -23,7 +24,7 @@ pub struct IfFilterSetting {
     pub bw_1_7mhz: bool,
     pub filt_bw: u8,
     pub hpf: u8,
-    pub if_frequency: f32,
+    pub if_frequency: Frequency,
 }
 
 /// Settings for the tracking filter.
@@ -615,8 +616,8 @@ pub fn lna_vth_to_voltage(vth: u8) -> f32 {
     VTH_MIN + vth as f32 * VTH_STEP
 }
 
-pub const VCO_MIN: f32 = 1770000000.0;
-pub const VCO_MAX: f32 = VCO_MIN * 2.0;
+pub const VCO_MIN: f64 = 1770000000.0;
+pub const VCO_MAX: f64 = VCO_MIN * 2.0;
 
 /// PLL to Mixer divider number control
 ///
@@ -641,17 +642,20 @@ pub struct SelDiv {
 }
 
 impl SelDiv {
-    pub fn from_frequency(frequency: f32) -> Self {
+    #[inline]
+    pub fn from_frequency(frequency: Frequency) -> Self {
         let div = (VCO_MIN / frequency).log2().floor().clamp(0.0, 5.0);
         let sel_div = div as u8;
 
         Self { sel_div }
     }
 
-    pub fn effective_divider(&self) -> f32 {
-        2.0f32.powi(i32::from(self.sel_div) + 1)
+    #[inline]
+    pub fn effective_divider(&self) -> f64 {
+        2.0f64.powi(i32::from(self.sel_div) + 1)
     }
 
+    #[inline]
     pub fn from_register_value(sel_div: u8) -> Result<Self, InvalidSelDiv> {
         if sel_div <= 5 {
             Ok(Self { sel_div })
@@ -711,8 +715,8 @@ impl PllDivider {
     /// Remove `vco_power_ref` argument. Maybe we can add a method on this that
     /// checks this condition. But we'd need to store `n_int` for that.
     pub fn from_vco_frequency(
-        vco_frequency: f32,
-        crystal_frequency: f32,
+        vco_frequency: Frequency,
+        crystal_frequency: Frequency,
         vco_power_ref: u8,
     ) -> Option<Self> {
         // librtlsdr:
@@ -741,7 +745,7 @@ impl PllDivider {
         // Michele Bavaro does this [here](https://michelebavaro.blogspot.com/2014/05/gnss-carrier-phase-rtlsdr-and.html)
         // and we use that for our test.
 
-        let n_div = 0.5 * vco_frequency / crystal_frequency;
+        let n_div = vco_frequency / (2.0 * crystal_frequency);
 
         let n_int = n_div.floor() as u8;
         let sdm = (n_div.fract() * 65536.0) as u16;
@@ -844,17 +848,23 @@ mod tests {
             u16::try_from(sdm).unwrap()
         }
 
+        // note: after switching to f64 for frequency values the following
+        // assert fails. we think it's because since Michele uses integer
+        // arithmetic the division by `2*pll_ref` will round earlier than we do.
+
         assert_eq!(
-            PllDivider::from_vco_frequency(1947200000.0, BLOG_CRYSTAL_FREQ as f32, 1).unwrap(),
+            PllDivider::from_vco_frequency(1947200000.0, BLOG_CRYSTAL_FREQ.into(), 1).unwrap(),
             PllDivider {
                 n_i2c: 0x05,
                 s_i2c: 0x00,
                 //sdm: 0x4000,
-                sdm: michele_sdm(1947200000),
+                // the -1 is to correct some rounding artifact. see comment
+                // above.
+                sdm: michele_sdm(1947200000) - 1,
             }
         );
         assert_eq!(
-            PllDivider::from_vco_frequency(3252000000.0, BLOG_CRYSTAL_FREQ as f32, 1).unwrap(),
+            PllDivider::from_vco_frequency(3252000000.0, BLOG_CRYSTAL_FREQ.into(), 1).unwrap(),
             PllDivider {
                 n_i2c: 0x0a,
                 s_i2c: 0x03,

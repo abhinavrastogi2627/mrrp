@@ -13,6 +13,7 @@ use biquad::{
     ToHertz,
     coefficients::Coefficients,
 };
+use mrrp_core::signal::Frequency;
 use mrrp_util::signal::Scanner;
 use num_traits::{
     ConstZero,
@@ -53,8 +54,8 @@ where
 }
 
 pub fn new<T>(
-    sample_rate: f32,
-    cutoff_frequency: f32,
+    sample_rate: Frequency,
+    cutoff_frequency: Frequency,
     ty: biquad::Type<f32>,
 ) -> Result<BiquadScanner<DirectForm2Transposed<f32, T>>, Error>
 where
@@ -73,8 +74,8 @@ where
 
 #[inline]
 pub fn lowpass<T>(
-    sample_rate: f32,
-    cutoff_frequency: f32,
+    sample_rate: Frequency,
+    cutoff_frequency: Frequency,
 ) -> Result<BiquadScanner<DirectForm2Transposed<f32, T>>, Error>
 where
     T: Copy + Add<T, Output = T> + Sub<T, Output = T> + ConstZero,
@@ -85,8 +86,8 @@ where
 
 #[inline]
 pub fn highpass<T>(
-    sample_rate: f32,
-    cutoff_frequency: f32,
+    sample_rate: Frequency,
+    cutoff_frequency: Frequency,
 ) -> Result<BiquadScanner<DirectForm2Transposed<f32, T>>, Error>
 where
     T: Copy + Add<T, Output = T> + Sub<T, Output = T> + ConstZero,

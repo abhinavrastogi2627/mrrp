@@ -19,6 +19,7 @@ use mrrp_core::{
     },
     signal::{
         AsyncReadSamples,
+        Frequency,
         GetSampleRate,
         ReadBuf,
         Remaining,
@@ -193,8 +194,9 @@ where
     S: State,
 {
     #[inline]
-    fn sample_rate(&self) -> f32 {
-        self.header.sample_rate as f32
+    fn sample_rate(&self) -> Frequency {
+        // <https://github.com/rust-lang/rust/issues/67057>
+        self.header.sample_rate as f64
     }
 }
 

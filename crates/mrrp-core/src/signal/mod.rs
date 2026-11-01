@@ -8,20 +8,22 @@ pub use self::{
     write::*,
 };
 
+pub type Frequency = f64;
+
 pub trait GetSampleRate {
-    fn sample_rate(&self) -> f32;
+    fn sample_rate(&self) -> Frequency;
 }
 
 impl<T: GetSampleRate> GetSampleRate for &T {
     #[inline]
-    fn sample_rate(&self) -> f32 {
+    fn sample_rate(&self) -> Frequency {
         (&**self).sample_rate()
     }
 }
 
 impl<T: GetSampleRate> GetSampleRate for &mut T {
     #[inline]
-    fn sample_rate(&self) -> f32 {
+    fn sample_rate(&self) -> Frequency {
         (&**self).sample_rate()
     }
 }

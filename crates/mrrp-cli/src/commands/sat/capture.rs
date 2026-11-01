@@ -6,7 +6,10 @@ use chrono::{
     Utc,
 };
 use mrrp_audio::write_stream_to_wav;
-use mrrp_core::sample::Complex;
+use mrrp_core::{
+    sample::Complex,
+    signal::Frequency,
+};
 use mrrp_rtl_sdr::Device;
 use mrrp_sat::{
     Geodetic,
@@ -45,7 +48,7 @@ pub async fn capture(
     location: Geodetic,
     options: Options,
     device: &mut Device,
-    center_frequency: f32,
+    center_frequency: Frequency,
 ) -> Result<(), Error> {
     let output = output.as_ref();
 

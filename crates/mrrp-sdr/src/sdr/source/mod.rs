@@ -21,6 +21,7 @@ use anyhow::{
 use mrrp_audio::WavSource;
 use mrrp_core::signal::{
     AsyncReadSamples,
+    Frequency,
     GetSampleRate,
     ReadBuf,
     Remaining,
@@ -54,8 +55,8 @@ pub trait IntoSource {
 
 pub trait Source: AsyncReadSamples<Sample = Iq, Error = Error> + Send + Unpin {
     fn name(&self) -> &str;
-    fn center_frequency(&self) -> f32;
-    fn sample_rate(&self) -> f32;
+    fn center_frequency(&self) -> Frequency;
+    fn sample_rate(&self) -> Frequency;
 
     /// Start the underlying sample stream
     fn start(&mut self) -> Pin<Box<dyn Future<Output = Result<(), Error>> + Send + '_>>;
@@ -71,12 +72,12 @@ pub trait Source: AsyncReadSamples<Sample = Iq, Error = Error> + Send + Unpin {
 
     fn set_sample_rate(
         &mut self,
-        sample_rate: f32,
+        sample_rate: Frequency,
     ) -> Pin<Box<dyn Future<Output = Result<(), Error>> + Send + '_>>;
 
     fn set_center_frequency(
         &mut self,
-        center_frequency: f32,
+        center_frequency: Frequency,
     ) -> Pin<Box<dyn Future<Output = Result<(), Error>> + Send + '_>>;
 }
 
@@ -94,13 +95,13 @@ where
 #[derive(Clone, Debug)]
 pub struct MockSource {
     noise: Throttled<Noise<SmallRng, PolarDistribution<Normal<f32>, Uniform<f32>>, Iq>>,
-    center_frequency: f32,
-    sample_rate: f32,
+    center_frequency: Frequency,
+    sample_rate: Frequency,
     active: bool,
 }
 
 impl MockSource {
-    pub fn new(center_frequency: f32, sample_rate: f32) -> Self {
+    pub fn new(center_frequency: Frequency, sample_rate: Frequency) -> Self {
         Self {
             noise: Noise::new(
                 rand::make_rng(),
@@ -109,7 +110,7 @@ impl MockSource {
                     phase: Uniform::new(0.0, TAU).unwrap(),
                 },
             )
-            .throttle(Duration::from_secs_f32(1.0 / sample_rate)),
+            .throttle(Duration::from_secs_f64(1.0 / sample_rate)),
             center_frequency,
             sample_rate,
             active: true, // todo
@@ -142,11 +143,11 @@ impl Source for MockSource {
         "Mock"
     }
 
-    fn center_frequency(&self) -> f32 {
+    fn center_frequency(&self) -> Frequency {
         self.center_frequency
     }
 
-    fn sample_rate(&self) -> f32 {
+    fn sample_rate(&self) -> Frequency {
         self.sample_rate
     }
 
@@ -170,7 +171,7 @@ impl Source for MockSource {
 
     fn set_sample_rate(
         &mut self,
-        sample_rate: f32,
+        sample_rate: Frequency,
     ) -> Pin<Box<dyn Future<Output = Result<(), Error>> + Send + '_>> {
         // changing the sample rate doesn't change anything on this source,
         // because it's just white noise anyway
@@ -180,7 +181,7 @@ impl Source for MockSource {
 
     fn set_center_frequency(
         &mut self,
-        center_frequency: f32,
+        center_frequency: Frequency,
     ) -> Pin<Box<dyn Future<Output = Result<(), Error>> + Send + '_>> {
         let _ = center_frequency;
         Box::pin(async { Err(anyhow!("unsupported")) })
@@ -218,7 +219,7 @@ where
 #[derive(Debug)]
 pub struct LoopedFileSource {
     inner: Throttled<Converted<WavSource<BufReader<File>, Complex<i16>>, Complex<f32>>>,
-    center_frequency: f32,
+    center_frequency: Frequency,
     name: Cow<'static, str>,
     active: bool,
 }
@@ -248,7 +249,7 @@ impl LoopedFileSource {
         })
     }
 
-    pub fn with_center_frequency(mut self, center_frequency: f32) -> Self {
+    pub fn with_center_frequency(mut self, center_frequency: Frequency) -> Self {
         self.center_frequency = center_frequency;
         self
     }
@@ -296,11 +297,11 @@ impl Source for LoopedFileSource {
         &self.name
     }
 
-    fn center_frequency(&self) -> f32 {
+    fn center_frequency(&self) -> Frequency {
         self.center_frequency
     }
 
-    fn sample_rate(&self) -> f32 {
+    fn sample_rate(&self) -> Frequency {
         self.inner.sample_rate()
     }
 
@@ -324,7 +325,7 @@ impl Source for LoopedFileSource {
 
     fn set_sample_rate(
         &mut self,
-        sample_rate: f32,
+        sample_rate: Frequency,
     ) -> Pin<Box<dyn Future<Output = Result<(), Error>> + Send + '_>> {
         let _ = sample_rate;
         Box::pin(async { Err(anyhow!("unsupported")) })
@@ -332,7 +333,7 @@ impl Source for LoopedFileSource {
 
     fn set_center_frequency(
         &mut self,
-        center_frequency: f32,
+        center_frequency: Frequency,
     ) -> Pin<Box<dyn Future<Output = Result<(), Error>> + Send + '_>> {
         let _ = center_frequency;
         Box::pin(async { Err(anyhow!("unsupported")) })

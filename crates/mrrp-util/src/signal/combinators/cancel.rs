@@ -8,6 +8,7 @@ use std::{
 
 use mrrp_core::signal::{
     AsyncReadSamples,
+    Frequency,
     GetSampleRate,
     ReadBuf,
     Remaining,
@@ -108,7 +109,7 @@ where
     R: GetSampleRate,
 {
     #[inline]
-    fn sample_rate(&self) -> f32 {
+    fn sample_rate(&self) -> Frequency {
         self.inner.sample_rate()
     }
 }

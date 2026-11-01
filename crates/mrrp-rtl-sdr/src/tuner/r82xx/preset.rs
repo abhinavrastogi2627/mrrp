@@ -1,19 +1,22 @@
-use crate::tuner::r82xx::{
-    CrystalCapacitor,
-    IfFilterSetting,
-    LnaGainCode,
-    MixGainCode,
-    OpenD,
-    RfFilt,
-    RfMux,
-    TrackingFilterSetting,
-    VgaGainCode,
+use crate::{
+    Frequency,
+    tuner::r82xx::{
+        CrystalCapacitor,
+        IfFilterSetting,
+        LnaGainCode,
+        MixGainCode,
+        OpenD,
+        RfFilt,
+        RfMux,
+        TrackingFilterSetting,
+        VgaGainCode,
+    },
 };
 
 #[derive(Clone, Copy, Debug)]
 pub struct BandwidthSetting {
-    pub min_bandwidth: f32,
-    pub max_bandwidth: f32,
+    pub min_bandwidth: Frequency,
+    pub max_bandwidth: Frequency,
     pub if_filter: IfFilterSetting,
 }
 
@@ -262,7 +265,7 @@ pub const PRESET_BANDWIDTH_SETTINGS: &[BandwidthSetting] = &[
     },
 ];
 
-pub fn bandwidth_setting(bandwidth: f32) -> &'static BandwidthSetting {
+pub fn bandwidth_setting(bandwidth: Frequency) -> &'static BandwidthSetting {
     // todo: do binary search instead
 
     PRESET_BANDWIDTH_SETTINGS
@@ -273,8 +276,8 @@ pub fn bandwidth_setting(bandwidth: f32) -> &'static BandwidthSetting {
 
 #[derive(Clone, Copy, Debug)]
 pub struct FrequencySetting {
-    pub start_frequency: f32,
-    pub end_frequency: f32,
+    pub start_frequency: Frequency,
+    pub end_frequency: Frequency,
 
     /// Settings for the tracking filter
     ///
@@ -538,7 +541,7 @@ pub const PRESET_FREQUENCY_SETTINGS: &[FrequencySetting] = &[
     },
     FrequencySetting {
         start_frequency: 650_000_000.0,
-        end_frequency: f32::INFINITY,
+        end_frequency: f64::INFINITY,
         tracking_filter: TrackingFilterSetting {
             open_d: OpenD::HighZ,
             rf_mux: RfMux::Bypass,
@@ -550,7 +553,7 @@ pub const PRESET_FREQUENCY_SETTINGS: &[FrequencySetting] = &[
     },
 ];
 
-pub fn frequency_setting(frequency: f32) -> &'static FrequencySetting {
+pub fn frequency_setting(frequency: Frequency) -> &'static FrequencySetting {
     // todo: do binary search instead
 
     PRESET_FREQUENCY_SETTINGS
@@ -817,8 +820,8 @@ fn make_gain_settings() {
 
 #[derive(Clone, Copy, Debug)]
 pub struct NotchBand {
-    pub start_frequency: f32,
-    pub end_frequency: f32,
+    pub start_frequency: Frequency,
+    pub end_frequency: Frequency,
 }
 
 pub const NOTCH_BANDS: &[NotchBand] = &[
@@ -836,7 +839,7 @@ pub const NOTCH_BANDS: &[NotchBand] = &[
     },
 ];
 
-pub fn is_in_notch_band(frequency: f32) -> bool {
+pub fn is_in_notch_band(frequency: Frequency) -> bool {
     NOTCH_BANDS.iter().any(|notch_band| {
         notch_band.start_frequency <= frequency && frequency <= notch_band.end_frequency
     })

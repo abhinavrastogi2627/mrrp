@@ -941,8 +941,8 @@ impl RingBuffer {
 #[derive(Clone, Debug)]
 pub struct WaterfallLine {
     pub data: Vec<f32>,
-    pub start_frequency: f32,
-    pub end_frequency: f32,
+    pub start_frequency: f64,
+    pub end_frequency: f64,
 }
 
 impl WaterfallLine {
@@ -955,8 +955,8 @@ impl WaterfallLine {
 struct IndexEntry {
     index_buffer_position: u64,
     data_buffer_slice: Slice,
-    start_frequency: f32,
-    end_frequency: f32,
+    start_frequency: f64,
+    end_frequency: f64,
 }
 
 impl IndexEntry {
@@ -970,8 +970,8 @@ impl IndexEntry {
                 self.data_buffer_slice.end() / u64::try_from(size_of::<f32>()).unwrap(),
             )
             .unwrap(),
-            start_frequency: self.start_frequency,
-            end_frequency: self.end_frequency,
+            start_frequency: self.start_frequency as f32,
+            end_frequency: self.end_frequency as f32,
         }
     }
 }

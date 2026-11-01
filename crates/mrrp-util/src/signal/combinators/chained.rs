@@ -10,6 +10,7 @@ use mrrp_core::{
     buf::SampleBufMut,
     signal::{
         FiniteStream,
+        Frequency,
         GetSampleRate,
         Remaining,
         SizeHint,
@@ -99,7 +100,7 @@ where
     T: GetSampleRate,
 {
     #[inline]
-    fn sample_rate(&self) -> f32 {
+    fn sample_rate(&self) -> Frequency {
         if self.head_exhausted {
             self.tail.sample_rate()
         }

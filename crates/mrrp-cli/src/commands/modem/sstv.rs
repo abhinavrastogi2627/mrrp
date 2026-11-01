@@ -106,6 +106,7 @@ pub mod vis {
     use futures_util::TryStreamExt;
     use mrrp_core::signal::{
         AsyncReadSamples,
+        Frequency,
         GetSampleRate,
     };
     use mrrp_sstv::{
@@ -141,7 +142,7 @@ pub mod vis {
         ///
         /// we only need this in the constructor to calculate tone lengths, but
         /// we need this atm for debugging
-        sample_rate: f32,
+        sample_rate: Frequency,
 
         frequency_counter: FrequencyCounter,
 
@@ -171,7 +172,7 @@ pub mod vis {
     }
 
     impl VisDetect {
-        pub fn new(sample_rate: f32) -> Self {
+        pub fn new(sample_rate: Frequency) -> Self {
             let frequency_counter = FrequencyCounter::new(50.0, sample_rate);
             let leader_detect = ToneDetect::new(LEADER_TONE, 50.0, 75.0);
             let vis_low_detect = ToneDetect::new(VIS_LOW_TONE, 50.0, 75.0);
@@ -213,7 +214,7 @@ pub mod vis {
             }
 
             // this is only used for debugging
-            let t = self.sample_num as f32 / self.sample_rate;
+            let t = self.sample_num as f64 / self.sample_rate;
             //tracing::trace!("t={:.3}ms, f={frequency}", t * 1000.0);
 
             let (_leader_state, leader_edge) = self.leader_detect.scan(frequency);
@@ -239,7 +240,7 @@ pub mod vis {
                             "LEADER: t={:.3}ms, n={}, dt={:.3}ms",
                             t * 1000.0,
                             self.state.leader_count,
-                            leader_time as f32 / self.sample_rate * 1000.0
+                            leader_time as f64 / self.sample_rate * 1000.0
                         );
                     }
                 }
@@ -367,6 +368,7 @@ mod attempt1 {
     };
     use mrrp_core::signal::{
         AsyncReadSamples,
+        Frequency,
         GetSampleRate,
     };
     use mrrp_filter::MovingSum;
@@ -390,7 +392,7 @@ mod attempt1 {
 
     #[derive(Debug)]
     pub struct Decoder {
-        sample_rate: f32,
+        sample_rate: Frequency,
 
         coarse_frequency: FrequencyCounter,
         fine_frequency: FrequencyCounter,
@@ -410,7 +412,7 @@ mod attempt1 {
     }
 
     impl Decoder {
-        pub fn new(sample_rate: f32) -> Self {
+        pub fn new(sample_rate: Frequency) -> Self {
             let coarse_frequency = FrequencyCounter::new(100.0, sample_rate);
             let r = (CHANNEL_HIGH_TONE - CHANNEL_LOW_TONE) / 4.0;
             let fine_frequency = FrequencyCounter::new(r, sample_rate);
@@ -452,9 +454,9 @@ mod attempt1 {
                 tracing::trace!(?y, ?y_len, ?uv_len);
 
                 for (mut x, luma) in line.iter().enumerate() {
-                    let luma = ((*luma - CHANNEL_LOW_TONE)
+                    let luma = ((*luma as f64 - CHANNEL_LOW_TONE)
                         / (CHANNEL_HIGH_TONE - CHANNEL_LOW_TONE))
-                        .clamp(0.0, 1.0);
+                        .clamp(0.0, 1.0) as f32;
                     let mut c = y % 2;
 
                     if x > sync_porch_len {
@@ -522,9 +524,9 @@ mod attempt1 {
 
             let coarse_frequency = self.coarse_frequency.scan(sample);
 
-            let t = self.sample_num as f32 / self.sample_rate;
+            let t = self.sample_num as f64 / self.sample_rate;
             let time_since_sync =
-                (self.sample_num - self.state.previous_sync_time) as f32 / self.sample_rate;
+                (self.sample_num - self.state.previous_sync_time) as f64 / self.sample_rate;
 
             let (sync_state, sync_edge) = self.sync_detect.scan(coarse_frequency);
             //let (porch_state, porch_edge) =
@@ -538,7 +540,7 @@ mod attempt1 {
 
             if !sync_state {
                 let fine_frequency = self.fine_frequency.scan(sample);
-                self.state.line.push(fine_frequency);
+                self.state.line.push(fine_frequency as f32);
             }
 
             if let Some(Edge::Rising) = sync_edge {
@@ -590,7 +592,7 @@ mod attempt1 {
         let mut sync_detect = ToneDetect::new(SYNC_TONE, 100.0, 110.0);
 
         let mut lines = vec![];
-        let mut line = vec![];
+        let mut line: Vec<f32> = vec![];
         let mut previous_sync_time = 0;
         let mut num_syncs = 0;
 
@@ -598,8 +600,8 @@ mod attempt1 {
         while let Some(sample) = source.read_sample_or_eof().await? {
             let coarse_frequency = coarse_frequency.scan(sample);
 
-            let t = i as f32 / sample_rate;
-            let time_since_sync = (i - previous_sync_time) as f32 / sample_rate;
+            let t = i as f64 / sample_rate;
+            let time_since_sync = (i - previous_sync_time) as f64 / sample_rate;
 
             let (sync_state, sync_edge) = sync_detect.scan(coarse_frequency);
             //let (porch_state, porch_edge) =
@@ -612,7 +614,7 @@ mod attempt1 {
             }*/
 
             if !sync_state {
-                let fine_frequency = fine_frequency.scan(sample);
+                let fine_frequency = fine_frequency.scan(sample) as f32;
                 line.push(fine_frequency);
             }
 
@@ -657,8 +659,9 @@ mod attempt1 {
             tracing::trace!(?y, ?y_len, ?uv_len);
 
             for (mut x, luma) in line.iter().enumerate() {
-                let luma = ((*luma - CHANNEL_LOW_TONE) / (CHANNEL_HIGH_TONE - CHANNEL_LOW_TONE))
-                    .clamp(0.0, 1.0);
+                let luma = ((*luma as f64 - CHANNEL_LOW_TONE)
+                    / (CHANNEL_HIGH_TONE - CHANNEL_LOW_TONE))
+                    .clamp(0.0, 1.0) as f32;
                 let mut c = y % 2;
 
                 if x > sync_porch_len {
@@ -720,12 +723,12 @@ mod attempt1 {
         //input_lowpass: MovingAverage<f32>,
         output_lowpass: MovingSum<f32>,
         state: f32,
-        frequency_resolution: f32,
+        frequency_resolution: Frequency,
         threshold: f32,
     }
 
     impl FrequencyCounter {
-        pub fn new(frequency_resolution: f32, sample_rate: f32) -> Self {
+        pub fn new(frequency_resolution: Frequency, sample_rate: Frequency) -> Self {
             // lowpass to remove DC
             //let input_lowpass = MovingAverage::from_cutoff_frequency(10.0,
             // sample_rate); tracing::trace!(n =
@@ -733,7 +736,7 @@ mod attempt1 {
 
             // lowpass to retrieve a smooth signal from the zero-crossing
             // detection
-            let lowpass_size = (sample_rate / frequency_resolution).floor() as usize;
+            let lowpass_size = (sample_rate / frequency_resolution as f64).floor() as usize;
             let output_lowpass = MovingSum::new(lowpass_size);
             tracing::trace!(size = ?lowpass_size, cutoff = output_lowpass.cutoff_frequency(sample_rate));
 
@@ -748,7 +751,7 @@ mod attempt1 {
     }
 
     impl Scanner<f32> for FrequencyCounter {
-        type Output = f32;
+        type Output = Frequency;
 
         fn scan(&mut self, sample: f32) -> Self::Output {
             //sample -= self.input_lowpass.scan(sample);
@@ -770,20 +773,24 @@ mod attempt1 {
             }
             self.state = new_state;
 
-            (self.output_lowpass.scan(pulse) * self.frequency_resolution).round()
+            (self.output_lowpass.scan(pulse) as f64 * self.frequency_resolution).round()
         }
     }
 
     #[derive(Clone, Copy, Debug)]
     pub struct ToneDetect {
-        frequency: f32,
-        low_threshold: f32,
-        high_threshold: f32,
+        frequency: Frequency,
+        low_threshold: Frequency,
+        high_threshold: Frequency,
         state: bool,
     }
 
     impl ToneDetect {
-        pub fn new(frequency: f32, low_threshold: f32, high_threshold: f32) -> Self {
+        pub fn new(
+            frequency: Frequency,
+            low_threshold: Frequency,
+            high_threshold: Frequency,
+        ) -> Self {
             Self {
                 frequency,
                 low_threshold,
@@ -793,13 +800,13 @@ mod attempt1 {
         }
     }
 
-    impl Scanner<f32> for ToneDetect {
+    impl Scanner<Frequency> for ToneDetect {
         type Output = (bool, Option<Edge>);
 
         #[inline]
-        fn scan(&mut self, sample: f32) -> Self::Output {
+        fn scan(&mut self, frequency: Frequency) -> Self::Output {
             let mut edge = None;
-            let distance = (sample - self.frequency).abs();
+            let distance = (frequency - self.frequency).abs();
 
             if self.state {
                 if distance > self.high_threshold {
@@ -827,6 +834,7 @@ mod attempt2 {
         sample::Complex,
         signal::{
             AsyncReadSamples,
+            Frequency,
             GetSampleRate,
         },
     };
@@ -865,7 +873,7 @@ mod attempt2 {
             let sample = hilbert_filter.scan(sample);
             let frequency = frequency_detect.scan(sample);
 
-            let t = i as f32 / sample_rate;
+            let t = i as f64 / sample_rate;
 
             let (_sync_state, sync_edge) = sync_detect.scan(frequency);
 
@@ -874,7 +882,7 @@ mod attempt2 {
 
                 tracing::trace!(
                     "t={t:.3}s SYNC! f={frequency}, dt={:.3}ms, n={num_syncs}",
-                    (i - previous_sync_time) as f32 / sample_rate * 1000.0
+                    (i - previous_sync_time) as f64 / sample_rate * 1000.0
                 );
 
                 previous_sync_time = i;
@@ -893,7 +901,7 @@ mod attempt2 {
     }
 
     impl FrequencyDetect {
-        pub fn new(sample_rate: f32) -> Self {
+        pub fn new(sample_rate: Frequency) -> Self {
             Self {
                 fm_demod: FmDemodulator::new(sample_rate, 1.0),
                 lowpass: MovingAverage::new(100),
@@ -902,11 +910,11 @@ mod attempt2 {
     }
 
     impl Scanner<Complex<f32>> for FrequencyDetect {
-        type Output = f32;
+        type Output = f64;
 
         fn scan(&mut self, sample: Complex<f32>) -> Self::Output {
             let frequency = self.fm_demod.scan(sample);
-            self.lowpass.scan(frequency)
+            self.lowpass.scan(frequency) as f64
         }
     }
 }

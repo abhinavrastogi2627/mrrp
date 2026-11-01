@@ -33,6 +33,7 @@ use mrrp_core::{
     sample::Complex,
     signal::{
         FiniteStream,
+        Frequency,
         GetSampleRate,
     },
 };
@@ -143,11 +144,11 @@ enum Command {
 
 #[derive(Clone, Debug, clap::Args)]
 struct DemodOptions {
-    #[clap(short, long, value_parser = si::parse_frequency::<f32>)]
-    fm_frequency: f32,
+    #[clap(short, long, value_parser = si::parse_frequency::<Frequency>)]
+    fm_frequency: Frequency,
 
-    #[clap(short = 'b', long, value_parser = si::parse_frequency::<f32>)]
-    fm_bandwidth: f32,
+    #[clap(short = 'b', long, value_parser = si::parse_frequency::<Frequency>)]
+    fm_bandwidth: Frequency,
 
     #[clap(flatten)]
     predict_options: PredictOptions,
@@ -304,7 +305,7 @@ async fn demod(
     let source = WavSource::<_, Complex<i16>>::from_path(&input)?.convert::<Complex<f32>>();
     let sample_rate = source.sample_rate();
     let num_samples = source.len();
-    let duration = Duration::from_secs_f32(num_samples as f32 / sample_rate);
+    let duration = Duration::from_secs_f64(num_samples as f64 / sample_rate);
 
     tracing::debug!(sat=%satellite.id(), start_time = ?source_info.start_time, center_frequency = ?source_info.frequency, ?duration, "Decoding ISS SSTV");
 
@@ -426,12 +427,12 @@ impl Scanner<f32> for Clamp {
 pub struct VisCollector {
     vis_detect: VisDetect,
     vis_headers: Vec<SstvDetection>,
-    sample_rate: f32,
+    sample_rate: Frequency,
     sample_num: usize,
 }
 
 impl VisCollector {
-    pub fn new(sample_rate: f32) -> Self {
+    pub fn new(sample_rate: Frequency) -> Self {
         Self {
             vis_detect: VisDetect::new(sample_rate),
             vis_headers: vec![],
@@ -457,7 +458,7 @@ impl Scanner<f32> for VisCollector {
 
     fn scan(&mut self, sample: f32) -> Self::Output {
         if let Some(vis_code) = self.vis_detect.scan(sample) {
-            let time = Duration::from_secs_f32(self.sample_num as f32 / self.sample_rate);
+            let time = Duration::from_secs_f64(self.sample_num as f64 / self.sample_rate);
 
             if let Some(vis_code) = vis_code.check_parity() {
                 tracing::info!(?vis_code, sample_num = ?self.sample_num, ?time, "detected VIS header");
@@ -482,9 +483,9 @@ struct DemodInfo {
     pub baseband: String,
     pub audio: String,
     pub start_time: DateTime<Utc>,
-    pub center_frequency: f32,
-    pub fm_frequency: f32,
-    pub fm_bandwidth: f32,
+    pub center_frequency: Frequency,
+    pub fm_frequency: Frequency,
+    pub fm_bandwidth: Frequency,
     pub sstv_detections: Vec<SstvDetection>,
 }
 

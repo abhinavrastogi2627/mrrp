@@ -15,6 +15,7 @@ use mrrp_core::{
     sample::Sample,
     signal::{
         AsyncReadSamples,
+        Frequency,
         GetSampleRate,
         ReadBuf,
         Remaining,
@@ -107,8 +108,8 @@ where
     R: GetSampleRate,
 {
     #[inline]
-    fn sample_rate(&self) -> f32 {
-        self.input.sample_rate() / self.factor as f32
+    fn sample_rate(&self) -> Frequency {
+        self.input.sample_rate() / self.factor as f64
     }
 }
 
@@ -228,8 +229,8 @@ where
     R: GetSampleRate,
 {
     #[inline]
-    fn sample_rate(&self) -> f32 {
-        self.input.sample_rate() * self.factor as f32
+    fn sample_rate(&self) -> Frequency {
+        self.input.sample_rate() * self.factor as f64
     }
 }
 
@@ -282,8 +283,8 @@ where
     T: AsyncReadSamples + GetSampleRate,
 {
     #[inline]
-    fn sample_rate(&self) -> f32 {
-        self.input.sample_rate() / self.decimate as f32
+    fn sample_rate(&self) -> Frequency {
+        self.input.sample_rate() / self.decimate as f64
     }
 }
 

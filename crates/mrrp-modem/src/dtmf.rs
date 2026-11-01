@@ -9,12 +9,14 @@ use std::{
         Poll,
         ready,
     },
+    time::Duration,
 };
 
 use futures_core::Stream;
 use mrrp_core::signal::{
     AsyncReadSamples,
     FiniteStream,
+    Frequency,
     GetSampleRate,
     ReadBuf,
     Remaining,
@@ -40,15 +42,20 @@ pin_project! {
         symbols: S,
         num_samples_per_tone: usize,
         num_samples_per_pause: usize,
-        sample_rate: f32,
+        sample_rate: Frequency,
         current_signal: Option<CurrentSignal>,
     }
 }
 
 impl<S> DtmfEncoder<S> {
-    pub fn new(symbols: S, sample_rate: f32, tone_duration: f32, pause: f32) -> Self {
-        let num_samples_per_tone = (tone_duration * sample_rate).round() as usize;
-        let num_samples_per_pause = (pause * sample_rate).round() as usize;
+    pub fn new(
+        symbols: S,
+        sample_rate: Frequency,
+        tone_duration: Duration,
+        pause: Duration,
+    ) -> Self {
+        let num_samples_per_tone = (tone_duration.as_secs_f64() * sample_rate).round() as usize;
+        let num_samples_per_pause = (pause.as_secs_f64() * sample_rate).round() as usize;
 
         // makes it easier to initialize the current signal
         let current_signal = CurrentSignal::Silence(silence().limit(0));
@@ -129,7 +136,7 @@ where
 
 impl<S> GetSampleRate for DtmfEncoder<S> {
     #[inline]
-    fn sample_rate(&self) -> f32 {
+    fn sample_rate(&self) -> Frequency {
         self.sample_rate
     }
 }
@@ -179,7 +186,7 @@ pub struct DtmfSymbol(u8);
 
 impl DtmfSymbol {
     #[inline]
-    pub fn tone(&self, sample_rate: f32) -> DtmfTone {
+    pub fn tone(&self, sample_rate: Frequency) -> DtmfTone {
         let [row, column] = self.row_column_frequency();
         DtmfTone::new(row, column, sample_rate)
     }
@@ -206,7 +213,7 @@ impl DtmfSymbol {
         }
     }
 
-    pub fn row_column_frequency(&self) -> [f32; 2] {
+    pub fn row_column_frequency(&self) -> [Frequency; 2] {
         let [row, column] = self.row_column();
         [TONES_ROWS[row], TONES_COLUMNS[column]]
     }
@@ -244,8 +251,8 @@ impl From<DtmfSymbol> for char {
     }
 }
 
-pub const TONES_ROWS: [f32; 4] = [697.0, 770.0, 852.0, 941.0];
-pub const TONES_COLUMNS: [f32; 4] = [1209.0, 1336.0, 1477.0, 1633.0];
+pub const TONES_ROWS: [Frequency; 4] = [697.0, 770.0, 852.0, 941.0];
+pub const TONES_COLUMNS: [Frequency; 4] = [1209.0, 1336.0, 1477.0, 1633.0];
 
 #[derive(Clone, Copy, Debug)]
 pub struct DtmfTone {
@@ -254,14 +261,18 @@ pub struct DtmfTone {
 }
 
 impl DtmfTone {
-    pub fn new(row_frequency: f32, column_frequency: f32, sample_rate: f32) -> Self {
+    pub fn new(
+        row_frequency: Frequency,
+        column_frequency: Frequency,
+        sample_rate: Frequency,
+    ) -> Self {
         Self {
             row: ComplexSinusoid::new(row_frequency, sample_rate),
             column: ComplexSinusoid::new(column_frequency, sample_rate),
         }
     }
 
-    pub fn set_sample_rate(&mut self, sample_rate: f32) {
+    pub fn set_sample_rate(&mut self, sample_rate: Frequency) {
         self.row.set_sample_rate(sample_rate);
         self.column.set_sample_rate(sample_rate);
     }
@@ -276,7 +287,7 @@ impl SignalGenerator for DtmfTone {
 }
 
 impl GetSampleRate for DtmfTone {
-    fn sample_rate(&self) -> f32 {
+    fn sample_rate(&self) -> Frequency {
         self.row.sample_rate()
     }
 }
@@ -298,7 +309,10 @@ impl CurrentSignal {
 
 #[cfg(test)]
 mod tests {
-    use std::fmt::Display;
+    use std::{
+        fmt::Display,
+        time::Duration,
+    };
 
     use futures_util::stream;
     use mrrp_core::signal::{
@@ -326,7 +340,7 @@ mod tests {
         // until no tone was left, and return.
 
         let sample_rate = 44100.0;
-        let tone_duration = 1.0;
+        let tone_duration = Duration::from_secs_f64(1.0);
 
         // parse symbols
         let symbols = "017612345"
@@ -339,7 +353,12 @@ mod tests {
         let symbols = stream::iter(symbols.into_iter().map(|symbol| Ok::<_, !>(symbol)));
 
         // encode
-        let encoded = DtmfEncoder::new(symbols, sample_rate, tone_duration, 0.1);
+        let encoded = DtmfEncoder::new(
+            symbols,
+            sample_rate,
+            tone_duration,
+            Duration::from_secs_f64(0.1),
+        );
 
         let stream = encoded.map(|sample| sample.re);
 

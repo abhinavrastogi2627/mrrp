@@ -131,6 +131,12 @@ pub mod enumerate;
 pub mod rtl2832u;
 pub mod tuner;
 
+#[cfg(feature = "mrrp")]
+pub type Frequency = mrrp_core::signal::Frequency;
+
+#[cfg(not(feature = "mrrp"))]
+pub type Frequency = f64;
+
 pub use crate::{
     device::{
         Device,

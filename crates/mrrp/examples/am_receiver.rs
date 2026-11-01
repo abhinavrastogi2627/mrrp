@@ -18,6 +18,7 @@ use mrrp::{
     rtl_sdr,
     signal::{
         AsyncReadSamplesExt,
+        Frequency,
         GetSampleRate,
     },
 };
@@ -33,11 +34,11 @@ async fn main() -> Result<(), Error> {
     let args = Args::parse();
 
     // The desired audio sample rate.
-    const AUDIO_SAMPLE_RATE: f32 = 44_100.0;
+    const AUDIO_SAMPLE_RATE: Frequency = 44_100.0;
 
     // We use the default sampling rate of the RTL-SDR.
     // Note that we can't sample the RTL-SDR at our desired audio sampling rate.
-    const RTLSDR_SAMPLE_RATE: f32 = 2_400_000.0; // 2.4 MHz
+    const RTLSDR_SAMPLE_RATE: Frequency = 2_400_000.0; // 2.4 MHz
 
     // We will need to downsample from 2.4 MHz to 44.1 kHz.
     // We choose an integer downsampling factor for this. Note that we'll still
@@ -119,7 +120,7 @@ async fn main() -> Result<(), Error> {
 
 #[derive(Debug, clap::Parser)]
 struct Args {
-    frequency: f32,
+    frequency: Frequency,
 
     #[clap(short, long, default_value = "0.2")]
     volume: f32,

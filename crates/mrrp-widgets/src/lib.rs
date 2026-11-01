@@ -75,7 +75,7 @@ impl GetWidgetRenderState for CallbackResources {
 
 #[derive(Debug, Default)]
 pub struct SpectrumFrame {
-    pub start_frequency: f32,
-    pub end_frequency: f32,
+    pub start_frequency: f64,
+    pub end_frequency: f64,
     pub data: Vec<f32>,
 }

@@ -119,7 +119,9 @@ where
             //let w = self.frequency_response.frequency(i);
             //let p = (Complex::i() * TAU * w * m).exp();
 
-            *h = h0.map_or(Zero::zero(), |response| Complex::from(response.amplitude));
+            *h = h0.map_or(Zero::zero(), |response| {
+                Complex::from(response.amplitude as f32)
+            });
         }
         self.fft_inverse
             .process_with_scratch(&mut self.h, &mut self.fft_scratch);
@@ -168,8 +170,8 @@ where
             if let Some(h_id) = h_id {
                 let a = h.norm();
                 let a_clamped = a.clamp(
-                    h_id.amplitude - h_id.tolerance,
-                    h_id.amplitude + h_id.tolerance,
+                    (h_id.amplitude - h_id.tolerance) as f32,
+                    (h_id.amplitude + h_id.tolerance) as f32,
                 );
                 *h *= a_clamped / a;
             }

@@ -19,20 +19,21 @@ pub use decoder::{
     SstvDecoder,
 };
 pub use encoder::SstvEncoder;
+use mrrp_core::signal::Frequency;
 
-pub const LEADER_TONE: f32 = 1900.0;
-pub const LEADER_TIME: f32 = 0.300;
+pub const LEADER_TONE: Frequency = 1900.0;
+pub const LEADER_TIME: f64 = 0.300;
 
-pub const LEADER_BREAK_TIME: f32 = 0.010;
+pub const LEADER_BREAK_TIME: f64 = 0.010;
 
-pub const VIS_BIT_TIME: f32 = 0.030;
-pub const VIS_LOW_TONE: f32 = 1300.0;
-pub const VIS_HIGH_TONE: f32 = 1100.0;
+pub const VIS_BIT_TIME: f64 = 0.030;
+pub const VIS_LOW_TONE: Frequency = 1300.0;
+pub const VIS_HIGH_TONE: Frequency = 1100.0;
 
 // sync, leader break, vis start/stop
-pub const SYNC_TONE: f32 = 1200.0;
+pub const SYNC_TONE: Frequency = 1200.0;
 
-pub const PORCH_TONE: f32 = 1500.0;
+pub const PORCH_TONE: Frequency = 1500.0;
 
-pub const CHANNEL_LOW_TONE: f32 = 1500.0;
-pub const CHANNEL_HIGH_TONE: f32 = 2300.0;
+pub const CHANNEL_LOW_TONE: Frequency = 1500.0;
+pub const CHANNEL_HIGH_TONE: Frequency = 2300.0;

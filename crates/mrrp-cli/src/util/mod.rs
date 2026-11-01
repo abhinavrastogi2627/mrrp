@@ -27,6 +27,7 @@ use chrono::{
 };
 use clap::ValueEnum;
 use colorgrad::Gradient;
+use mrrp_core::signal::Frequency;
 use num_traits::float::FloatCore;
 use serde::{
     Deserialize,
@@ -182,8 +183,8 @@ impl ColorGradient {
 
 #[derive(Clone, Debug, clap::Args)]
 pub struct SourceInfoOptions {
-    #[clap(short = 'F', long, value_parser = si::parse_frequency::<f32>)]
-    pub center_frequency: Option<f32>,
+    #[clap(short = 'F', long, value_parser = si::parse_frequency::<Frequency>)]
+    pub center_frequency: Option<Frequency>,
 
     #[clap(short = 'S', long)]
     pub start_time: Option<DateTime<Utc>>,
@@ -192,7 +193,7 @@ pub struct SourceInfoOptions {
 #[derive(Clone, Copy, Debug)]
 pub struct SourceInfo {
     pub start_time: DateTime<Utc>,
-    pub frequency: f32,
+    pub frequency: Frequency,
 }
 
 impl SourceInfo {
@@ -204,10 +205,7 @@ impl SourceInfo {
             bail!("Input file must be baseband");
         }
 
-        Ok(Self {
-            start_time: info.timestamp.to_utc(),
-            frequency: info.center_frequency as f32,
-        })
+        Ok(info.source_info())
     }
 
     pub fn from_path_or_options(
@@ -231,7 +229,7 @@ impl SourceInfo {
         })
     }
 
-    pub fn with_frequency(mut self, frequency: f32) -> Self {
+    pub fn with_frequency(mut self, frequency: Frequency) -> Self {
         self.frequency = frequency;
         self
     }

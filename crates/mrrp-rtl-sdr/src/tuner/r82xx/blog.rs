@@ -38,6 +38,7 @@
 //! wrapper.
 
 use crate::{
+    Frequency,
     rtl2832u::{
         self,
         Rtl2832u,
@@ -137,7 +138,7 @@ impl TunerProbe for BlogTunerProbe {
         if let Some(mut r82xx) = R82xxProbe.try_open(rtl2832u).await?
             && r82xx.model() == r82xx::Model::R828D
         {
-            r82xx.crystal_frequency = BLOG_CRYSTAL_FREQ as f32;
+            r82xx.crystal_frequency = BLOG_CRYSTAL_FREQ.into();
 
             let mut upconverter_pin = rtl2832u
                 .try_gpio(UPCONVERTER_GPIO_PIN)?
@@ -198,7 +199,7 @@ impl Tuner for BlogTuner {
     async fn set_bandwidth<'a>(
         &'a mut self,
         rtl2832u: &'a mut Rtl2832u,
-        bandwidth: f32,
+        bandwidth: Frequency,
     ) -> Result<(), Self::Error> {
         self.r82xx.set_bandwidth(rtl2832u, bandwidth).await?;
         Ok(())
@@ -207,7 +208,7 @@ impl Tuner for BlogTuner {
     async fn set_center_frequency<'a>(
         &'a mut self,
         rtl2832u: &'a mut Rtl2832u,
-        mut center_frequency: f32,
+        mut center_frequency: Frequency,
     ) -> Result<(), Self::Error> {
         // which band (HF, VHF, UHF) are we tuning to?
         let band = Band::from_frequency(center_frequency);
@@ -335,7 +336,7 @@ pub enum Band {
 }
 
 impl Band {
-    pub fn from_frequency(frequency: f32) -> Self {
+    pub fn from_frequency(frequency: Frequency) -> Self {
         if frequency <= 28_800_000.0 {
             Self::Hf
         }

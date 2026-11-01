@@ -8,6 +8,7 @@ use std::{
 
 use mrrp_core::signal::{
     FiniteStream,
+    Frequency,
     GetSampleRate,
     Remaining,
     SizeHint,
@@ -25,20 +26,20 @@ pin_project! {
     pub struct WithSampleRate<T> {
         #[pin]
         inner: T,
-        sample_rate: f32,
+        sample_rate: Frequency,
     }
 }
 
 impl<T> WithSampleRate<T> {
     #[inline]
-    pub fn new(inner: T, sample_rate: f32) -> Self {
+    pub fn new(inner: T, sample_rate: Frequency) -> Self {
         Self { inner, sample_rate }
     }
 }
 
 impl<T> GetSampleRate for WithSampleRate<T> {
     #[inline]
-    fn sample_rate(&self) -> f32 {
+    fn sample_rate(&self) -> Frequency {
         self.sample_rate
     }
 }

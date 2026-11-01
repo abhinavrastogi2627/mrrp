@@ -28,6 +28,7 @@ use crate::{
     signal::{
         AsyncReadSamples,
         AsyncWriteSamples,
+        Frequency,
         GetSampleRate,
         ReadBuf,
         Remaining,
@@ -115,7 +116,7 @@ where
     T: GetSampleRate,
 {
     #[inline]
-    fn sample_rate(&self) -> f32 {
+    fn sample_rate(&self) -> Frequency {
         self.stream.sample_rate()
     }
 }
@@ -174,7 +175,7 @@ where
     R: GetSampleRate,
 {
     #[inline]
-    fn sample_rate(&self) -> f32 {
+    fn sample_rate(&self) -> Frequency {
         self.read_samples.sample_rate()
     }
 }

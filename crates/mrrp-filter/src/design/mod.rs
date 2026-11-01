@@ -1,4 +1,7 @@
-use mrrp_core::signal::GetSampleRate;
+use mrrp_core::signal::{
+    Frequency,
+    GetSampleRate,
+};
 
 use crate::fir::FirFilter;
 
@@ -11,7 +14,7 @@ pub mod pm_remez;
 
 pub trait DesiredFrequencyResponse {
     fn defined_on(&self) -> impl IntoIterator<Item = Band>;
-    fn frequency_response_at(&self, frequency: f32) -> Option<FrequencyResponseAt>;
+    fn frequency_response_at(&self, frequency: Frequency) -> Option<FrequencyResponseAt>;
 
     fn sampled(self, fft_size: usize) -> SampledIdealFrequencyResponse<Self>
     where
@@ -37,7 +40,7 @@ pub trait IsNormalized {}
 pub trait Normalize: Sized {
     type Normalized: IsNormalized;
 
-    fn normalize(self, reference: f32) -> Self::Normalized;
+    fn normalize(self, reference: Frequency) -> Self::Normalized;
 
     #[inline]
     fn assert_normalized(self) -> Self::Normalized {
@@ -148,15 +151,15 @@ pub enum Symmetry {
 /// frequency response is defined.
 #[derive(Clone, Copy, Debug)]
 pub struct Band {
-    pub start: f32,
-    pub end: f32,
+    pub start: Frequency,
+    pub end: Frequency,
 }
 
 /// The desired frequency response at a specific frequency.
 #[derive(Clone, Copy, Debug)]
 pub struct FrequencyResponseAt {
-    pub amplitude: f32,
-    pub tolerance: f32,
+    pub amplitude: f64,
+    pub tolerance: f64,
 }
 
 /// A generic wrapper for filter specifications that are garantueed to be
@@ -170,7 +173,8 @@ impl<F> Normalize for Normalized<F> {
     type Normalized = Self;
 
     #[inline]
-    fn normalize(self, _sample_rate: f32) -> Self::Normalized {
+    fn normalize(self, sample_rate: Frequency) -> Self::Normalized {
+        let _ = sample_rate;
         self
     }
 }
@@ -185,7 +189,7 @@ where
     }
 
     #[inline]
-    fn frequency_response_at(&self, frequency: f32) -> Option<FrequencyResponseAt> {
+    fn frequency_response_at(&self, frequency: Frequency) -> Option<FrequencyResponseAt> {
         self.0.frequency_response_at(frequency)
     }
 }
@@ -213,18 +217,18 @@ where
 /// A low-pass filter.
 #[derive(Clone, Copy, Debug)]
 pub struct Lowpass {
-    pub passband_end: f32,
-    pub stopband_start: f32,
-    pub passband_tolerance: f32,
-    pub stopband_tolerance: f32,
+    pub passband_end: Frequency,
+    pub stopband_start: Frequency,
+    pub passband_tolerance: f64,
+    pub stopband_tolerance: f64,
 }
 
 impl Lowpass {
     pub fn new(
-        cutoff_frequency: f32,
-        transition_bandwidth: f32,
-        passband_tolerance: f32,
-        stopband_tolerance: f32,
+        cutoff_frequency: Frequency,
+        transition_bandwidth: Frequency,
+        passband_tolerance: f64,
+        stopband_tolerance: f64,
     ) -> Self {
         let half_transition_bandwidth = 0.5 * transition_bandwidth;
         Self {
@@ -235,11 +239,11 @@ impl Lowpass {
         }
     }
 
-    pub fn cutoff_frequency(&self) -> f32 {
+    pub fn cutoff_frequency(&self) -> Frequency {
         0.5 * (self.passband_end + self.stopband_start)
     }
 
-    pub fn transition_bandwidth(&self) -> f32 {
+    pub fn transition_bandwidth(&self) -> Frequency {
         self.stopband_start - self.passband_end
     }
 }
@@ -247,7 +251,7 @@ impl Lowpass {
 impl Normalize for Lowpass {
     type Normalized = Normalized<Self>;
 
-    fn normalize(self, sample_rate: f32) -> Self::Normalized {
+    fn normalize(self, sample_rate: Frequency) -> Self::Normalized {
         Normalized(Self {
             passband_end: self.passband_end / sample_rate,
             stopband_start: self.stopband_start / sample_rate,
@@ -271,7 +275,7 @@ impl DesiredFrequencyResponse for Lowpass {
         ]
     }
 
-    fn frequency_response_at(&self, frequency: f32) -> Option<FrequencyResponseAt> {
+    fn frequency_response_at(&self, frequency: Frequency) -> Option<FrequencyResponseAt> {
         if frequency <= self.passband_end {
             Some(FrequencyResponseAt {
                 amplitude: 1.0,
@@ -310,12 +314,12 @@ impl IsSymmetric for Lowpass {
 
 #[derive(Clone, Copy, Debug)]
 pub struct Hilbert {
-    pub allpass_begin: f32,
-    pub allpass_end: f32,
+    pub allpass_begin: Frequency,
+    pub allpass_end: Frequency,
 }
 
 impl Hilbert {
-    pub fn new(transition_bandwidth: f32) -> Self {
+    pub fn new(transition_bandwidth: Frequency) -> Self {
         Self {
             allpass_begin: 0.25 * transition_bandwidth,
             // fixme: this doesn't work
@@ -327,7 +331,7 @@ impl Hilbert {
 impl Normalize for Hilbert {
     type Normalized = Normalized<Self>;
 
-    fn normalize(self, reference: f32) -> Self::Normalized {
+    fn normalize(self, reference: Frequency) -> Self::Normalized {
         Normalized(Self {
             allpass_begin: self.allpass_begin / reference,
             allpass_end: self.allpass_end / reference,
@@ -344,7 +348,7 @@ impl DesiredFrequencyResponse for Hilbert {
         .into_iter()
     }
 
-    fn frequency_response_at(&self, frequency: f32) -> Option<FrequencyResponseAt> {
+    fn frequency_response_at(&self, frequency: Frequency) -> Option<FrequencyResponseAt> {
         let amplitude = if frequency > 0.0 { 1.0 } else { 0.0 };
 
         Some(FrequencyResponseAt {
@@ -377,8 +381,8 @@ where
         self.filter_specification.frequency_response_at(frequency)
     }
 
-    pub fn frequency(&self, index: usize) -> f32 {
-        let mut frequency = index as f32 / self.fft_size as f32;
+    pub fn frequency(&self, index: usize) -> Frequency {
+        let mut frequency = index as f64 / self.fft_size as f64;
         if frequency >= 0.5 {
             frequency -= 1.0;
         }

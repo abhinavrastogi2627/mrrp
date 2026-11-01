@@ -3,6 +3,7 @@ use std::f32::consts::{
     TAU,
 };
 
+use mrrp_core::signal::Frequency;
 use mrrp_util::signal::Scanner;
 use num_complex::Complex;
 use num_traits::Zero;
@@ -15,10 +16,10 @@ pub struct DifferentiateAndAccessPhase {
 }
 
 impl DifferentiateAndAccessPhase {
-    pub fn new(sample_rate: f32, frequency_deviation: f32) -> Self {
+    pub fn new(sample_rate: Frequency, frequency_deviation: Frequency) -> Self {
         Self {
             delayed: Complex::ZERO,
-            norm_factor: sample_rate / (TAU * frequency_deviation),
+            norm_factor: frequency_modulation_factor(sample_rate, frequency_deviation),
         }
     }
 }
@@ -43,10 +44,10 @@ pub struct AccessPhaseAndDifferentiate {
 }
 
 impl AccessPhaseAndDifferentiate {
-    pub fn new(sample_rate: f32, frequency_deviation: f32) -> Self {
+    pub fn new(sample_rate: Frequency, frequency_deviation: Frequency) -> Self {
         Self {
             delayed: 0.0,
-            norm_factor: sample_rate / (TAU * frequency_deviation),
+            norm_factor: frequency_modulation_factor(sample_rate, frequency_deviation),
         }
     }
 }
@@ -82,16 +83,11 @@ pub struct DifferentiateAndDivide {
 }
 
 impl DifferentiateAndDivide {
-    pub fn new(sample_rate: f32, frequency_deviation: f32) -> Self {
-        let norm_factor = sample_rate / (TAU * frequency_deviation);
-
-        // for whatever reason this seems to be off by a factor of 2
-        //let norm_factor = 0.5 * norm_factor;
-
+    pub fn new(sample_rate: Frequency, frequency_deviation: Frequency) -> Self {
         Self {
             delay1: Complex::zero(),
             delay2: Complex::zero(),
-            norm_factor,
+            norm_factor: frequency_modulation_factor(sample_rate, frequency_deviation),
         }
     }
 }
@@ -127,10 +123,13 @@ pub struct FmModulator {
 }
 
 impl FmModulator {
-    pub fn new(sample_rate: f32, frequency_deviation: f32) -> Self {
+    pub fn new(sample_rate: Frequency, frequency_deviation: Frequency) -> Self {
         Self {
             delay: 0.0,
-            frequency_modulation_factor: sample_rate / (TAU * frequency_deviation),
+            frequency_modulation_factor: frequency_modulation_factor(
+                sample_rate,
+                frequency_deviation,
+            ),
             carrier_frequency: 0.0,
         }
     }
@@ -148,4 +147,9 @@ impl Scanner<f32> for FmModulator {
         }
         .exp()
     }
+}
+
+#[inline]
+fn frequency_modulation_factor(sample_rate: Frequency, frequency_deviation: Frequency) -> f32 {
+    (sample_rate / (std::f64::consts::TAU * frequency_deviation)) as f32
 }

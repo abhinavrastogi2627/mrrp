@@ -22,6 +22,7 @@ use clap::{
     Parser,
     Subcommand,
 };
+use mrrp_core::signal::Frequency;
 use mrrp_rtl_sdr::tuner::gain;
 use mrrp_sat::{
     satellite::{
@@ -227,12 +228,12 @@ enum Command {
         /// The center frequency to capture.
         ///
         /// This does not apply any doppler correction.
-        #[clap(short = 'f', long, value_parser = si::parse_frequency::<f32>)]
-        center_frequency: f32,
+        #[clap(short = 'f', long, value_parser = si::parse_frequency::<Frequency>)]
+        center_frequency: Frequency,
 
         /// The sample rate to capture with.
-        #[clap(short, long, value_parser = si::parse_frequency::<f32>)]
-        sample_rate: f32,
+        #[clap(short, long, value_parser = si::parse_frequency::<Frequency>)]
+        sample_rate: Frequency,
 
         /// Whether to enable Bias-T.
         #[clap(short, long)]
@@ -262,8 +263,8 @@ enum Command {
         sat_id: SatelliteId,
 
         /// The unshifted frequency of the signal.
-        #[clap(short = 'f', long, value_parser = si::parse_frequency::<f32>)]
-        nominal_frequency: f32,
+        #[clap(short = 'f', long, value_parser = si::parse_frequency::<Frequency>)]
+        nominal_frequency: Frequency,
 
         /// Start time of the capture.
         #[clap(short = 't', long)]

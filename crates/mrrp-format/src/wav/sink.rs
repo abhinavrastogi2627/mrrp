@@ -15,7 +15,10 @@ use std::{
     },
 };
 
-use mrrp_core::signal::AsyncWriteSamples;
+use mrrp_core::signal::{
+    AsyncWriteSamples,
+    Frequency,
+};
 use num_complex::Complex;
 use tokio::task::coop;
 
@@ -74,9 +77,10 @@ where
     S: IntoWavSamples,
 {
     #[inline]
-    pub fn from_path(path: impl AsRef<Path>, sample_rate: f32) -> Result<Self, Error> {
+    pub fn from_path(path: impl AsRef<Path>, sample_rate: Frequency) -> Result<Self, Error> {
         Ok(Self::new(hound::WavWriter::create(
             path,
+            // <https://github.com/rust-lang/rust/issues/67057>
             S::spec(sample_rate as u32),
         )?))
     }

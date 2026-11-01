@@ -15,10 +15,13 @@ use mrrp_core::signal::{
     AsyncReadSamples,
     FiniteStream,
 };
-use mrrp_filter::design::{
-    FilterDesign,
-    Lowpass,
-    pm_remez::pm_remez,
+use mrrp_filter::{
+    design::{
+        FilterDesign,
+        Lowpass,
+        pm_remez::pm_remez,
+    },
+    fir::FirFilter,
 };
 use mrrp_util::signal::{
     AsyncReadSamplesExt,
@@ -51,9 +54,15 @@ pub fn bench_buffering(c: &mut Criterion) {
 
     //let input = white_noise::<Complex<f32>>().limit(0x100000);
 
-    let filter = pm_remez(Lowpass::new(0.25, 0.01, 0.05, 0.05), 17)
-        .unwrap()
-        .fir_filter();
+    let filter_design = pm_remez(Lowpass::new(0.25, 0.01, 0.05, 0.05), 17).unwrap();
+    // <https://github.com/jgraef/mrrp/issues/53>
+    let filter = FirFilter::new(
+        filter_design
+            .coefficients()
+            .iter()
+            .map(|c| *c as f32)
+            .collect(),
+    );
 
     group.bench_function("fir normal unbuffered", |b| {
         b.iter(|| {

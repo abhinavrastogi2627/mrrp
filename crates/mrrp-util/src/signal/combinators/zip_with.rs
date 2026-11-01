@@ -16,6 +16,7 @@ use mrrp_core::{
     buf::SampleBufMut,
     signal::{
         FiniteStream,
+        Frequency,
         GetSampleRate,
         Remaining,
         SizeHint,
@@ -122,7 +123,7 @@ where
     R: AsyncReadSamples,
 {
     #[inline]
-    fn sample_rate(&self) -> f32 {
+    fn sample_rate(&self) -> Frequency {
         self.left_stream.sample_rate()
     }
 }
@@ -248,7 +249,7 @@ where
     R: AsyncReadSamples,
 {
     #[inline]
-    fn sample_rate(&self) -> f32 {
+    fn sample_rate(&self) -> Frequency {
         self.inner.sample_rate()
     }
 }
@@ -340,7 +341,7 @@ where
     R: AsyncReadSamples,
 {
     #[inline]
-    fn sample_rate(&self) -> f32 {
+    fn sample_rate(&self) -> Frequency {
         self.inner.sample_rate()
     }
 }

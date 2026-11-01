@@ -59,7 +59,7 @@ pub async fn play(input: impl AsRef<Path>, listen_address: &str) -> Result<(), E
     tracing::debug!(
         sample_rate = source.sample_rate(),
         length = source.len(),
-        duration = %humantime::format_duration(Duration::from_secs_f32(source.sample_rate() * source.len() as f32))
+        duration = %humantime::format_duration(Duration::from_secs_f64(source.sample_rate() * source.len() as f64))
     );
 
     tracing::info!(?listen_address, "Listening for connections");
@@ -150,10 +150,10 @@ async fn handle_connection(
     let buffer_capacity = buffer.len();
 
     let sample_rate = source.sample_rate();
-    let seek_delta = (seek_time.as_secs_f32() * sample_rate) as isize;
+    let seek_delta = (seek_time.as_secs_f64() * sample_rate) as isize;
     let mut paused = false;
 
-    let sample_duration = Duration::from_secs_f32(1.0 / sample_rate);
+    let sample_duration = Duration::from_secs_f64(1.0 / sample_rate);
     let mut sink = connection.sink.throttled(sample_duration);
 
     loop {

@@ -51,12 +51,12 @@ impl Default for RemezAlgorithm<Estimate> {
     }
 }
 
-impl<F, L> DesignAlgorithm<F, f32> for RemezAlgorithm<L>
+impl<F, L> DesignAlgorithm<F, f64> for RemezAlgorithm<L>
 where
     F: DesiredFrequencyResponse + IsSymmetric,
     L: ToConcreteFilterLength<F>,
 {
-    type Design = RemezDesign<f32>;
+    type Design = RemezDesign<f64>;
     type Error = Error;
 
     fn design_filter(&self, filter_specification: F) -> Result<Self::Design, Self::Error> {
@@ -73,7 +73,7 @@ impl<C> FilterDesign<C> for RemezDesign<C> {
     }
 }
 
-pub fn pm_remez<F, L>(filter_specification: F, filter_length: L) -> Result<RemezDesign<f32>, Error>
+pub fn pm_remez<F, L>(filter_specification: F, filter_length: L) -> Result<RemezDesign<f64>, Error>
 where
     F: DesiredFrequencyResponse + IsSymmetric,
     L: ToConcreteFilterLength<F>,
@@ -107,7 +107,7 @@ where
                     None
                 }
             })
-            .min_by(|(d1, _): &(f32, f32), (d2, _): &(f32, f32)| {
+            .min_by(|(d1, _): &(f64, f64), (d2, _): &(f64, f64)| {
                 d1.partial_cmp(d2).expect("failed to compare band edges")
             })
             .expect("frequency response returned None for frequency inside bands");
@@ -137,5 +137,5 @@ where
         Symmetry::Negative => pm_remez::Symmetry::Odd,
     });
 
-    pm_remez::pm_remez::<f32, _>(&parameters)
+    pm_remez::pm_remez::<f64, _>(&parameters)
 }

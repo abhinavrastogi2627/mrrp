@@ -20,10 +20,13 @@ use mrrp_core::{
         StreamLength,
     },
 };
-use mrrp_filter::design::{
-    FilterDesign,
-    Lowpass,
-    pm_remez::pm_remez,
+use mrrp_filter::{
+    design::{
+        FilterDesign,
+        Lowpass,
+        pm_remez::pm_remez,
+    },
+    fir::FirFilter,
 };
 use mrrp_util::signal::{
     AsyncReadSamplesExt,
@@ -60,9 +63,15 @@ fn bench_fir_single_sample_buffered_bug() {
         .expect("white noise returned error");
     let input = Cursor::new(&samples[..]);
 
-    let filter = pm_remez(Lowpass::new(0.25, 0.01, 0.05, 0.05), 17)
-        .unwrap()
-        .fir_filter();
+    let filter_design = pm_remez(Lowpass::new(0.25, 0.01, 0.05, 0.05), 17).unwrap();
+    // <https://github.com/jgraef/mrrp/issues/53>
+    let filter = FirFilter::new(
+        filter_design
+            .coefficients()
+            .iter()
+            .map(|c| *c as f32)
+            .collect(),
+    );
 
     let filtered_single_samples =
         black_box(SingleSampleStream::new(input.clone())).scan_in_place_with(filter);

@@ -22,10 +22,12 @@ use mrrp::{
     },
     signal::{
         AsyncReadSamplesExt,
+        Frequency,
         Scanner,
         white_noise,
     },
 };
+use mrrp_filter::design::FilterDesign;
 use num_complex::Complex;
 use rand::rngs::SmallRng;
 
@@ -73,7 +75,10 @@ async fn main() -> Result<(), Error> {
                 "fir-pmremez" => {
                     let design = pm_remez::pm_remez(args.filter_specification(), 11)?;
                     println!("filter design: {design:#?}");
-                    Box::new(FirFilter::new(design.impulse_response))
+                    Box::new(FirFilter::new(
+                        // <https://github.com/jgraef/mrrp/issues/53>
+                        design.coefficients().iter().map(|c| *c as f32).collect(),
+                    ))
                 }
                 _ => bail!("Unknown filter type: {filter}"),
             }
@@ -104,13 +109,13 @@ async fn main() -> Result<(), Error> {
 #[derive(Debug, clap::Parser)]
 struct Args {
     #[clap(short, long, default_value = "2400000")]
-    sample_rate: f32,
+    sample_rate: Frequency,
 
     #[clap(short = 'f', long)]
-    cutoff_frequency: Option<f32>,
+    cutoff_frequency: Option<Frequency>,
 
     #[clap(short, long)]
-    transition_bandwidth: Option<f32>,
+    transition_bandwidth: Option<Frequency>,
 
     #[clap(short = 'o', long)]
     file_output: Option<PathBuf>,
@@ -123,12 +128,12 @@ struct Args {
 }
 
 impl Args {
-    fn cutoff_frequency(&self) -> f32 {
+    fn cutoff_frequency(&self) -> Frequency {
         self.cutoff_frequency
             .unwrap_or_else(|| self.sample_rate / 4.0)
     }
 
-    fn transition_bandwidth(&self) -> f32 {
+    fn transition_bandwidth(&self) -> Frequency {
         self.transition_bandwidth
             .unwrap_or_else(|| self.cutoff_frequency() * 0.4)
     }

@@ -10,6 +10,7 @@ use anyhow::Error;
 use futures_util::TryFutureExt;
 use mrrp_core::signal::{
     AsyncReadSamples,
+    Frequency,
     ReadBuf,
     Remaining,
     StreamLength,
@@ -62,12 +63,12 @@ impl Source for RtlSdrSource {
         &self.name
     }
 
-    fn center_frequency(&self) -> f32 {
+    fn center_frequency(&self) -> Frequency {
         // todo
         7000000.0
     }
 
-    fn sample_rate(&self) -> f32 {
+    fn sample_rate(&self) -> Frequency {
         // todo
         2400000.0
     }
@@ -98,14 +99,14 @@ impl Source for RtlSdrSource {
 
     fn set_sample_rate(
         &mut self,
-        sample_rate: f32,
+        sample_rate: Frequency,
     ) -> Pin<Box<dyn Future<Output = Result<(), Error>> + Send + '_>> {
         Box::pin(self.device.set_sample_rate(sample_rate).map_err(Into::into))
     }
 
     fn set_center_frequency(
         &mut self,
-        center_frequency: f32,
+        center_frequency: Frequency,
     ) -> Pin<Box<dyn Future<Output = Result<(), Error>> + Send + '_>> {
         Box::pin(
             self.device

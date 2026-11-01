@@ -12,6 +12,7 @@ use anyhow::{
 };
 use bytes::Buf;
 use futures_util::TryStreamExt;
+use mrrp_core::signal::Frequency;
 use mrrp_rtl_sdr::{
     Device,
     device::ReaderOptions,
@@ -51,7 +52,7 @@ use tracing::{
 #[derive(Clone, Copy, Debug)]
 pub struct ServerConfig {
     pub buffer_size: usize,
-    pub fix_tuner_frequency: Option<f32>,
+    pub fix_tuner_frequency: Option<Frequency>,
     pub log_dropped: bool,
 }
 
@@ -331,11 +332,11 @@ async fn handle_command(
     match command {
         Command::SetSampleRate { sample_rate } => {
             tracing::debug!(?command, "handling command");
-            device.set_sample_rate(sample_rate as f32).await?;
+            device.set_sample_rate(sample_rate.into()).await?;
         }
         Command::SetCenterFrequency { frequency } => {
             tracing::debug!(?command, "handling command");
-            let frequency = frequency as f32;
+            let frequency: Frequency = frequency.into();
 
             if let Some(fixed_tuner_frequency) = config.fix_tuner_frequency {
                 device.set_center_frequency(fixed_tuner_frequency).await?;

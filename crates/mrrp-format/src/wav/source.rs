@@ -16,6 +16,7 @@ use mrrp_core::{
     signal::{
         AsyncReadSamples,
         FiniteStream,
+        Frequency,
         GetSampleRate,
         ReadBuf,
         Remaining,
@@ -142,8 +143,8 @@ where
 
 impl<R, S> GetSampleRate for WavSource<R, S> {
     #[inline]
-    fn sample_rate(&self) -> f32 {
-        self.spec.sample_rate as f32
+    fn sample_rate(&self) -> Frequency {
+        self.spec.sample_rate.try_into().unwrap()
     }
 }
 

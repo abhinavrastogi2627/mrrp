@@ -1,3 +1,4 @@
+use mrrp_core::signal::Frequency;
 use mrrp_widgets::{
     spectrum::SpectrumState,
     waterfall::{
@@ -74,13 +75,13 @@ where
 
 #[derive(Clone, Copy, Debug)]
 pub struct SpectrumFrame<B> {
-    pub center_frequency: f32,
-    pub sample_rate: f32,
+    pub center_frequency: Frequency,
+    pub sample_rate: Frequency,
     pub data: B,
 }
 
 impl<B> SpectrumFrame<B> {
-    pub fn frequency_range(&self) -> (f32, f32) {
+    pub fn frequency_range(&self) -> (Frequency, Frequency) {
         let c = self.center_frequency;
         let d = self.sample_rate / 2.0;
         (c - d, c + d)

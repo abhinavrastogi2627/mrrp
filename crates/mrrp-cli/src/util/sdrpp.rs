@@ -87,7 +87,7 @@ pub struct FileInfo {
 impl FileInfo {
     pub fn source_info(&self) -> SourceInfo {
         SourceInfo {
-            frequency: self.center_frequency as f32,
+            frequency: self.center_frequency.into(),
             start_time: DateTime::<Utc>::from(self.timestamp),
         }
     }

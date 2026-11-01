@@ -29,7 +29,10 @@ use clap::{
     Subcommand,
 };
 use mrrp_audio::write_stream_to_wav;
-use mrrp_core::sample::Complex;
+use mrrp_core::{
+    sample::Complex,
+    signal::Frequency,
+};
 use mrrp_rtl_sdr::rtl2832u::register::{
     self as reg,
 };
@@ -556,12 +559,12 @@ enum Command {
         device: DeviceArgs,
 
         /// Sets the devices sample rate
-        #[clap(short = 'S', long, default_value = "2.4M", value_parser = si::parse_frequency::<f32>)]
-        sample_rate: f32,
+        #[clap(short = 'S', long, default_value = "2.4M", value_parser = si::parse_frequency::<Frequency>)]
+        sample_rate: Frequency,
 
         /// Sets the device's center frequency
-        #[clap(short = 'F', long, default_value = "144M", value_parser = si::parse_frequency::<f32>)]
-        center_frequency: f32,
+        #[clap(short = 'F', long, default_value = "144M", value_parser = si::parse_frequency::<Frequency>)]
+        center_frequency: Frequency,
 
         /// Enables IQ streaming
         ///
@@ -631,20 +634,20 @@ enum Command {
         ///
         /// This makes it possible to look at the signal received from the tuner
         /// outside of the intended band.
-        #[clap(long, value_parser = si::parse_frequency::<f32>)]
-        fix_tuner_frequency: Option<f32>,
+        #[clap(long, value_parser = si::parse_frequency::<Frequency>)]
+        fix_tuner_frequency: Option<Frequency>,
     },
     Record {
         #[clap(flatten)]
         device: DeviceArgs,
 
         /// Sets the devices sample rate
-        #[clap(short = 'S', long, default_value = "2.4M", value_parser = si::parse_frequency::<f32>)]
-        sample_rate: f32,
+        #[clap(short = 'S', long, default_value = "2.4M", value_parser = si::parse_frequency::<Frequency>)]
+        sample_rate: Frequency,
 
         /// Sets the device's center frequency
-        #[clap(short = 'F', long, default_value = "144M", value_parser = si::parse_frequency::<f32>)]
-        center_frequency: f32,
+        #[clap(short = 'F', long, default_value = "144M", value_parser = si::parse_frequency::<Frequency>)]
+        center_frequency: Frequency,
 
         #[clap(short, long)]
         output: Option<PathBuf>,

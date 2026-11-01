@@ -91,8 +91,8 @@ where
 
         let total_duration = match read_samples.remaining() {
             Remaining::Finite { num_samples } => {
-                Some(Duration::from_secs_f32(
-                    num_samples as f32 / read_samples.sample_rate(),
+                Some(Duration::from_secs_f64(
+                    num_samples as f64 / read_samples.sample_rate(),
                 ))
             }
             Remaining::Infinite | Remaining::Unknown => None,
@@ -136,6 +136,7 @@ where
 
     #[inline]
     fn sample_rate(&self) -> rodio::SampleRate {
+        // <https://github.com/rust-lang/rust/issues/67057>
         NonZero::new(self.read_samples.sample_rate() as u32).unwrap()
     }
 

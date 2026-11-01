@@ -34,6 +34,7 @@ pub use crate::tuner::r82xx::{
     types::*,
 };
 use crate::{
+    Frequency,
     rtl2832u::{
         self,
         Rtl2832u,
@@ -83,10 +84,10 @@ pub enum Error {
 #[derive(Clone, Copy, Debug, thiserror::Error)]
 #[error("No suitable PLL configuration found for LO frequency: {lo_frequency}")]
 pub struct NoPllConfig {
-    pub lo_frequency: f32,
+    pub lo_frequency: Frequency,
     pub sel_div: SelDiv,
-    pub vco_frequency: f32,
-    pub crystal_frequency: f32,
+    pub vco_frequency: Frequency,
+    pub crystal_frequency: Frequency,
     pub vco_power_ref: u8,
 }
 
@@ -142,8 +143,8 @@ pub struct R82xx {
     model: Model,
     i2c_device: I2cDevice,
     register_state: [u8; NUM_REGISTERS as usize],
-    if_frequency: f32,
-    crystal_frequency: f32,
+    if_frequency: Frequency,
+    crystal_frequency: Frequency,
     crystal_config: CrystalConfig,
 }
 
@@ -162,8 +163,8 @@ impl R82xx {
             model,
             i2c_device,
             register_state: Default::default(),
-            if_frequency: DEFAULT_IF_FREQUENCY as f32,
-            crystal_frequency: DEFAULT_CRYSTAL_FREQ as f32,
+            if_frequency: DEFAULT_IF_FREQUENCY.into(),
+            crystal_frequency: DEFAULT_CRYSTAL_FREQ.into(),
             crystal_config,
         }
     }
@@ -198,7 +199,7 @@ pub struct Transaction<'a> {
     r82xx: &'a mut R82xx,
     rtl2832u: &'a mut Rtl2832u,
     registers: RegisterBuffer,
-    if_frequency: f32,
+    if_frequency: Frequency,
     warn_on_uncomitted_drop: bool,
 }
 
@@ -671,7 +672,7 @@ impl<'a> Transaction<'a> {
         }
     }
 
-    pub fn set_bandwidth(&mut self, bandwidth: f32) {
+    pub fn set_bandwidth(&mut self, bandwidth: Frequency) {
         tracing::debug!(?bandwidth, "setting bandwidth");
 
         self.set_if_filter_setting(&bandwidth_setting(bandwidth).if_filter);
@@ -687,7 +688,7 @@ impl<'a> Transaction<'a> {
         self.if_frequency = filter_setting.if_frequency;
     }
 
-    pub async fn set_center_frequency(&mut self, center_frequency: f32) -> Result<(), Error> {
+    pub async fn set_center_frequency(&mut self, center_frequency: Frequency) -> Result<(), Error> {
         let lo_frequency = center_frequency + self.if_frequency;
 
         // todo: this configures the tracking filter, so why would this use the
@@ -837,7 +838,7 @@ impl<'a> Transaction<'a> {
         self.registers.set_tf_lp(setting.tf_lp);
     }
 
-    pub async fn set_pll(&mut self, lo_frequency: f32) -> Result<(), Error> {
+    pub async fn set_pll(&mut self, lo_frequency: Frequency) -> Result<(), Error> {
         // /* set pll autotune = 128kHz */
         // rc = r82xx_write_reg_mask(priv, 0x1a, 0x00, 0x0c);
         //
@@ -1138,7 +1139,7 @@ impl Tuner for R82xx {
     async fn set_bandwidth<'a>(
         &'a mut self,
         rtl2832u: &'a mut Rtl2832u,
-        bandwidth: f32,
+        bandwidth: Frequency,
     ) -> Result<(), Self::Error> {
         let mut transaction = self.begin_transaction(rtl2832u);
         transaction.set_bandwidth(bandwidth);
@@ -1148,7 +1149,7 @@ impl Tuner for R82xx {
     async fn set_center_frequency<'a>(
         &'a mut self,
         rtl2832u: &'a mut Rtl2832u,
-        center_frequency: f32,
+        center_frequency: Frequency,
     ) -> Result<(), Self::Error> {
         let mut transaction = self.begin_transaction(rtl2832u);
         transaction.set_center_frequency(center_frequency).await?;

@@ -10,15 +10,13 @@ use std::{
 
 use mrrp_core::signal::{
     AsyncReadSamples,
+    Frequency,
     GetSampleRate,
     ReadBuf,
 };
 use mrrp_filter::GoertzelFilter;
 use mrrp_modem::fm;
-use mrrp_util::{
-    signal::Scanner,
-    unlerp,
-};
+use mrrp_util::signal::Scanner;
 use num_complex::Complex;
 use pin_project_lite::pin_project;
 
@@ -54,9 +52,9 @@ struct EdgeDetect {
 
 impl EdgeDetect {
     pub fn new(
-        sample_rate: f32,
-        trigger_frequency: f32,
-        trigger_bandwidth: f32,
+        sample_rate: Frequency,
+        trigger_frequency: Frequency,
+        trigger_bandwidth: Frequency,
         trigger_threshold: f32,
     ) -> Self {
         Self {
@@ -101,10 +99,10 @@ struct VisBitDetect {
 
 impl VisBitDetect {
     pub fn new(
-        sample_rate: f32,
-        trigger_frequency_low: f32,
-        trigger_frequency_high: f32,
-        trigger_bandwidth: f32,
+        sample_rate: Frequency,
+        trigger_frequency_low: Frequency,
+        trigger_frequency_high: Frequency,
+        trigger_bandwidth: Frequency,
         trigger_threshold: f32,
     ) -> Self {
         Self {
@@ -144,12 +142,16 @@ impl Scanner<Complex<f32>> for VisBitDetect {
 #[derive(Clone, Copy, Debug)]
 struct ChannelSample {
     frequency: fm::DifferentiateAndDivide,
-    frequency_low: f32,
-    frequency_high: f32,
+    frequency_low: Frequency,
+    frequency_high: Frequency,
 }
 
 impl ChannelSample {
-    pub fn new(sample_rate: f32, frequency_low: f32, frequency_high: f32) -> Self {
+    pub fn new(
+        sample_rate: Frequency,
+        frequency_low: Frequency,
+        frequency_high: Frequency,
+    ) -> Self {
         Self {
             frequency: fm::DifferentiateAndDivide::new(sample_rate, 1.0),
             frequency_low,
@@ -163,7 +165,7 @@ impl Scanner<Complex<f32>> for ChannelSample {
 
     fn scan(&mut self, sample: Complex<f32>) -> Self::Output {
         let frequency = self.frequency.scan(sample);
-        unlerp(frequency, self.frequency_low, self.frequency_high).clamp(0.0, 1.0)
+        unlerp(frequency as f64, self.frequency_low, self.frequency_high).clamp(0.0, 1.0) as f32
     }
 }
 
@@ -176,7 +178,7 @@ struct Filters {
 }
 
 impl Filters {
-    pub fn new(sample_rate: f32) -> Self {
+    pub fn new(sample_rate: Frequency) -> Self {
         let leader = EdgeDetect::new(sample_rate, LEADER_TONE, 100.0, 0.1);
         let sync = EdgeDetect::new(sample_rate, SYNC_TONE, 50.0, 0.5);
         let vis = VisBitDetect::new(sample_rate, VIS_LOW_TONE, VIS_HIGH_TONE, 100.0, 0.1);
@@ -196,7 +198,7 @@ pin_project! {
     pub struct SstvDecoder<R, F, M = DefaultModes> {
         #[pin]
         input: R,
-        sample_rate: f32,
+        sample_rate: Frequency,
         samples_consumed: usize,
         filters: Filters,
         state: Option<(State, PulseAcceptor)>,
@@ -283,7 +285,7 @@ where
 
                     match (accepted_pulse, &mut state) {
                         (AcceptedPulse::Leader { length }, _) => {
-                            let length_in_seconds = length as f32 / *this.sample_rate;
+                            let length_in_seconds = length as f64 / *this.sample_rate;
                             tracing::debug!(?length, length_in_seconds, "leader")
                         }
                         (
@@ -400,7 +402,11 @@ enum PulseAcceptor {
 }
 
 impl PulseAcceptor {
-    pub fn from_state(state: &State, sample_rate: f32, mode: Option<&ModeSpecification>) -> Self {
+    pub fn from_state(
+        state: &State,
+        sample_rate: Frequency,
+        mode: Option<&ModeSpecification>,
+    ) -> Self {
         match state {
             State::Header { header_state } => {
                 match header_state {
@@ -556,4 +562,9 @@ enum AcceptedPulse {
     Porch,
     VisBit { bit: Option<bool> },
     Channel { value: f32 },
+}
+
+#[inline]
+fn unlerp(x: f64, a: f64, b: f64) -> f64 {
+    (x - a) / (b - a)
 }

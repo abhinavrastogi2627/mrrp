@@ -11,19 +11,17 @@ use mrrp_core::{
     buf::SampleBufMut,
     signal::{
         AsyncReadSamples,
+        Frequency,
         GetSampleRate,
         ReadBuf,
         Remaining,
         StreamLength,
     },
 };
-use mrrp_util::{
-    lerp,
-    signal::{
-        ComplexSinusoid,
-        SignalGenerator,
-        coop,
-    },
+use mrrp_util::signal::{
+    ComplexSinusoid,
+    SignalGenerator,
+    coop,
 };
 use num_complex::Complex;
 
@@ -50,14 +48,14 @@ pub struct SstvEncoder<F> {
     frame_buffer: F,
     mode: ModeSpecification,
     state: Option<(State, PulseGenerator)>,
-    sample_rate: f32,
+    sample_rate: Frequency,
 }
 
 impl<F> SstvEncoder<F>
 where
     F: FrameBuffer,
 {
-    pub fn new(frame_buffer: F, mode: ModeSpecification, sample_rate: f32) -> Self {
+    pub fn new(frame_buffer: F, mode: ModeSpecification, sample_rate: Frequency) -> Self {
         assert_eq!(frame_buffer.width(), mode.pixels_per_line);
         assert_eq!(frame_buffer.height(), mode.num_lines);
 
@@ -123,7 +121,7 @@ where
 
 impl<F> GetSampleRate for SstvEncoder<F> {
     #[inline]
-    fn sample_rate(&self) -> f32 {
+    fn sample_rate(&self) -> Frequency {
         self.sample_rate
     }
 }
@@ -137,13 +135,13 @@ impl<F> StreamLength for SstvEncoder<F> {
 
 #[derive(Clone, Copy, Debug)]
 struct Pulse {
-    pub frequency: f32,
-    pub duration: f32,
+    pub frequency: Frequency,
+    pub duration: f64,
 }
 
 impl Pulse {
     #[inline]
-    pub fn new(frequency: f32, duration: f32) -> Self {
+    pub fn new(frequency: Frequency, duration: f64) -> Self {
         Self {
             frequency,
             duration,
@@ -181,7 +179,7 @@ impl Pulse {
                     LineState::Porch => Pulse::new(PORCH_TONE, mode.porch_time),
                     LineState::Scan { channel, x } => {
                         let channel_value = frame_buffer.channel(*x, *y, *channel);
-                        let channel_frequency = lerp(channel_value as f32 / 255.0, 1500.0, 2300.0);
+                        let channel_frequency = lerp(channel_value as f64 / 255.0, 1500.0, 2300.0);
                         Pulse::new(channel_frequency, mode.pixel_time)
                     }
                     LineState::Separator { channel: _ } => Pulse::new(PORCH_TONE, mode.sep_time),
@@ -199,7 +197,7 @@ struct PulseGenerator {
 
 impl PulseGenerator {
     #[inline]
-    pub fn from_pulse(pulse: Pulse, sample_rate: f32) -> Self {
+    pub fn from_pulse(pulse: Pulse, sample_rate: Frequency) -> Self {
         Self {
             sinusoid: ComplexSinusoid::new(pulse.frequency, sample_rate),
             samples_remaining: (pulse.duration * sample_rate) as usize,
@@ -223,4 +221,9 @@ impl PulseGenerator {
             None
         }
     }
+}
+
+#[inline]
+fn lerp(t: f64, a: f64, b: f64) -> f64 {
+    (1.0 - t) * a + t * b
 }

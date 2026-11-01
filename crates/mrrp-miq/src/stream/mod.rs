@@ -7,6 +7,7 @@ use chrono::{
     DateTime,
     Utc,
 };
+use mrrp_core::signal::Frequency;
 pub use mrrp_geo::{
     Geodetic,
     Orientation,
@@ -231,8 +232,8 @@ macro_rules! make_stream_info {
 }
 
 make_stream_info! {
-    center_frequency: f32 as Option,
-    sample_rate: f32 as Option,
+    center_frequency: Frequency as Option,
+    sample_rate: Frequency as Option,
     gain: f32 as Option,
     agc: Agc as Option,
 

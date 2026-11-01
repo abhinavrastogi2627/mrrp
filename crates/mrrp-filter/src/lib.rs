@@ -18,6 +18,7 @@ use std::{
 
 use mrrp_core::signal::{
     AsyncReadSamples,
+    Frequency,
     GetSampleRate,
 };
 use mrrp_util::signal::Scanner;
@@ -53,7 +54,11 @@ pub struct HilbertFilter {
 
 impl HilbertFilter {
     #[cfg(feature = "pm-remez")]
-    pub fn new(sample_rate: f32, transition_bandwidth: f32, filter_length: usize) -> Self {
+    pub fn new(
+        sample_rate: Frequency,
+        transition_bandwidth: Frequency,
+        filter_length: usize,
+    ) -> Self {
         assert!(filter_length % 2 == 1, "filter length must be odd");
 
         let transition_bandwidth = transition_bandwidth / sample_rate;
@@ -69,7 +74,8 @@ impl HilbertFilter {
         )
         .expect("failed to design hilbert filter");
         Self {
-            hilbert: hilbert.fir_filter(),
+            // <https://github.com/jgraef/mrrp/issues/53>
+            hilbert: FirFilter::new(hilbert.coefficients().iter().map(|c| *c as f32).collect()),
         }
     }
 }
@@ -99,10 +105,15 @@ pub struct GoertzelFilter {
 }
 
 impl GoertzelFilter {
-    pub fn new(sample_rate: f32, filter_frequency: f32, filter_bandwidth: f32) -> Self {
+    pub fn new(
+        sample_rate: Frequency,
+        filter_frequency: Frequency,
+        filter_bandwidth: Frequency,
+    ) -> Self {
         let n = (sample_rate / filter_bandwidth) as usize;
         Self {
-            exp_filter_frequency: (-Complex::i() * filter_frequency / sample_rate * TAU).exp(),
+            exp_filter_frequency: (-Complex::i() * (filter_frequency / sample_rate) as f32 * TAU)
+                .exp(),
             s: Default::default(),
             i: 0,
             n,
@@ -152,7 +163,7 @@ where
         }
     }
 
-    pub fn from_cutoff_frequency(cutoff_frequency: f32, sample_rate: f32) -> Self {
+    pub fn from_cutoff_frequency(cutoff_frequency: Frequency, sample_rate: Frequency) -> Self {
         // https://dsp.stackexchange.com/a/14648
 
         let cutoff_frequency = cutoff_frequency / sample_rate;
@@ -168,8 +179,8 @@ impl<S> MovingSum<S> {
         self.length
     }
 
-    pub fn cutoff_frequency(&self, sample_rate: f32) -> f32 {
-        let cutoff_frequency = 0.442947 / ((self.length as f32).powi(2) - 1.0).sqrt();
+    pub fn cutoff_frequency(&self, sample_rate: Frequency) -> Frequency {
+        let cutoff_frequency = 0.442947 / ((self.length as f64).powi(2) - 1.0).sqrt();
         cutoff_frequency * sample_rate
     }
 }
@@ -209,7 +220,7 @@ where
     }
 
     #[inline]
-    pub fn from_cutoff_frequency(cutoff_frequency: f32, sample_rate: f32) -> Self {
+    pub fn from_cutoff_frequency(cutoff_frequency: Frequency, sample_rate: Frequency) -> Self {
         MovingSum::from_cutoff_frequency(cutoff_frequency, sample_rate).into()
     }
 }
@@ -221,7 +232,7 @@ impl<S> MovingAverage<S> {
     }
 
     #[inline]
-    pub fn cutoff_frequency(&self, sample_rate: f32) -> f32 {
+    pub fn cutoff_frequency(&self, sample_rate: Frequency) -> Frequency {
         self.moving_sum.cutoff_frequency(sample_rate)
     }
 
@@ -295,7 +306,7 @@ pub trait AsyncReadSamplesFilterExt: AsyncReadSamples {
     /// We can probably make this exact by alternating between the floored and
     /// ceiled decimation rate.
     #[inline]
-    fn decimate_to(self, target_sample_rate: f32) -> Decimate<Self>
+    fn decimate_to(self, target_sample_rate: Frequency) -> Decimate<Self>
     where
         Self: Sized + GetSampleRate,
     {
@@ -337,9 +348,9 @@ pub trait AsyncReadSamplesFilterExt: AsyncReadSamples {
     /// # TODO
     ///
     /// We can probably make this exact by alternating between the floored and
-    /// ceiled interpolation rate.
+    /// ceiled interpolation rate (we think that's called "dithering").
     #[inline]
-    fn interpolate_to(self, target_sample_rate: f32) -> Interpolate<Self>
+    fn interpolate_to(self, target_sample_rate: Frequency) -> Interpolate<Self>
     where
         Self: Sized + GetSampleRate,
     {

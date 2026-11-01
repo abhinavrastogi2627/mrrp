@@ -27,6 +27,7 @@ use mrrp_core::{
         AsyncReadSamples,
         AsyncWriteSamples,
         FiniteStream,
+        Frequency,
         GetSampleRate,
         ReadBuf,
         Remaining,
@@ -328,12 +329,12 @@ pub trait AsyncReadSamplesExt: AsyncReadSamples {
     where
         Self: Sized + GetSampleRate,
     {
-        let sample_duration = Duration::from_secs_f32(1.0 / self.sample_rate());
+        let sample_duration = Duration::from_secs_f64(1.0 / self.sample_rate());
         self.throttle(sample_duration)
     }
 
     #[inline]
-    fn with_sample_rate(self, sample_rate: f32) -> WithSampleRate<Self>
+    fn with_sample_rate(self, sample_rate: Frequency) -> WithSampleRate<Self>
     where
         Self: Sized,
     {
@@ -367,11 +368,11 @@ pub trait AsyncReadSamplesExt: AsyncReadSamples {
     }
 
     #[inline]
-    fn limit_by_time(self, time: f32) -> Limited<Self>
+    fn limit_to_duration(self, duration: Duration) -> Limited<Self>
     where
         Self: Sized + GetSampleRate,
     {
-        let num_samples = (time * self.sample_rate()) as usize;
+        let num_samples = (duration.as_secs_f64() * self.sample_rate()) as usize;
         self.limit(num_samples)
     }
 

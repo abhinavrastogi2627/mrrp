@@ -158,7 +158,7 @@ impl<'a> SpectrumStateUpdateGuard<'a> {
         &mut self.spectrum_frame_mut().data
     }
 
-    pub fn set_frequency_range(&mut self, range: RangeInclusive<f32>) {
+    pub fn set_frequency_range(&mut self, range: RangeInclusive<f64>) {
         let frame = self.spectrum_frame_mut();
         frame.start_frequency = *range.start();
         frame.end_frequency = *range.end();
@@ -472,8 +472,8 @@ impl State {
             // upload data to gpu
 
             let header = SpectrumDataHeader {
-                start_frequency: frame.start_frequency,
-                end_frequency: frame.end_frequency,
+                start_frequency: frame.start_frequency as f32,
+                end_frequency: frame.end_frequency as f32,
             };
 
             let header_bytes = bytemuck::bytes_of(&header);

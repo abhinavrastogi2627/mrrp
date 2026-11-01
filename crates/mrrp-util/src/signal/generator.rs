@@ -12,6 +12,7 @@ use mrrp_core::{
     buf::SamplesMut,
     signal::{
         AsyncReadSamples,
+        Frequency,
         GetSampleRate,
         ReadBuf,
         Remaining,
@@ -91,7 +92,7 @@ where
     G: SignalGenerator,
 {
     #[inline]
-    fn sample_rate(&self) -> f32 {
+    fn sample_rate(&self) -> Frequency {
         self.signal_generator.sample_rate()
     }
 }
@@ -136,7 +137,7 @@ where
     G: SignalGenerator,
 {
     #[inline]
-    fn sample_rate(&self) -> f32 {
+    fn sample_rate(&self) -> Frequency {
         self.signal_generator.sample_rate()
     }
 }

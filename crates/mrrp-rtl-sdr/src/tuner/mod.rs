@@ -9,6 +9,7 @@ use std::{
 use futures_util::TryFutureExt;
 
 use crate::{
+    Frequency,
     rtl2832u::{
         IfMode,
         Rtl2832u,
@@ -43,13 +44,13 @@ pub trait Tuner: Debug + Sized + Send + Sync + 'static {
     fn set_bandwidth<'a>(
         &'a mut self,
         rtl2832u: &'a mut Rtl2832u,
-        bandwidth: f32,
+        bandwidth: Frequency,
     ) -> impl Future<Output = Result<(), Self::Error>> + Send + 'a;
 
     fn set_center_frequency<'a>(
         &'a mut self,
         rtl2832u: &'a mut Rtl2832u,
-        center_frequency: f32,
+        center_frequency: Frequency,
     ) -> impl Future<Output = Result<(), Self::Error>> + Send + 'a;
 
     fn if_setting(&self) -> IfSetting;
@@ -184,13 +185,13 @@ trait AnyTunerTrait: Debug + Send + Sync + Any {
     fn set_bandwidth<'a>(
         &'a mut self,
         rtl2832u: &'a mut Rtl2832u,
-        bandwidth: f32,
+        bandwidth: Frequency,
     ) -> Pin<Box<dyn Future<Output = Result<(), AnyTunerError>> + Send + 'a>>;
 
     fn set_center_frequency<'a>(
         &'a mut self,
         rtl2832u: &'a mut Rtl2832u,
-        center_frequency: f32,
+        center_frequency: Frequency,
     ) -> Pin<Box<dyn Future<Output = Result<(), AnyTunerError>> + Send + 'a>>;
 
     fn if_setting(&self) -> IfSetting;
@@ -220,7 +221,7 @@ where
     fn set_bandwidth<'a>(
         &'a mut self,
         rtl2832u: &'a mut Rtl2832u,
-        bandwidth: f32,
+        bandwidth: Frequency,
     ) -> Pin<Box<dyn Future<Output = Result<(), AnyTunerError>> + Send + 'a>> {
         Box::pin(Tuner::set_bandwidth(self, rtl2832u, bandwidth).map_err(AnyTunerError::new))
     }
@@ -228,7 +229,7 @@ where
     fn set_center_frequency<'a>(
         &'a mut self,
         rtl2832u: &'a mut Rtl2832u,
-        center_frequency: f32,
+        center_frequency: Frequency,
     ) -> Pin<Box<dyn Future<Output = Result<(), AnyTunerError>> + Send + 'a>> {
         Box::pin(
             Tuner::set_center_frequency(self, rtl2832u, center_frequency)
@@ -301,7 +302,7 @@ impl Tuner for AnyTuner {
     fn set_bandwidth<'a>(
         &'a mut self,
         rtl2832u: &'a mut Rtl2832u,
-        bandwidth: f32,
+        bandwidth: Frequency,
     ) -> impl Future<Output = Result<(), Self::Error>> + 'a {
         self.0.set_bandwidth(rtl2832u, bandwidth)
     }
@@ -309,7 +310,7 @@ impl Tuner for AnyTuner {
     fn set_center_frequency<'a>(
         &'a mut self,
         rtl2832u: &'a mut Rtl2832u,
-        center_frequency: f32,
+        center_frequency: Frequency,
     ) -> impl Future<Output = Result<(), Self::Error>> + Send + 'a {
         self.0.set_center_frequency(rtl2832u, center_frequency)
     }
@@ -351,7 +352,7 @@ impl Tuner for NullTuner {
     async fn set_bandwidth<'a>(
         &'a mut self,
         rtl2832u: &'a mut Rtl2832u,
-        bandwidth: f32,
+        bandwidth: Frequency,
     ) -> Result<(), Self::Error> {
         let _ = (rtl2832u, bandwidth);
         Ok(())
@@ -360,7 +361,7 @@ impl Tuner for NullTuner {
     async fn set_center_frequency<'a>(
         &'a mut self,
         rtl2832u: &'a mut Rtl2832u,
-        center_frequency: f32,
+        center_frequency: Frequency,
     ) -> Result<(), Self::Error> {
         let _ = (rtl2832u, center_frequency);
         Ok(())
@@ -414,7 +415,7 @@ impl TunerProbe for NullTuner {
 pub enum IfSetting {
     ZeroIf,
     If {
-        frequency: f32,
+        frequency: Frequency,
         invert_spectrum: bool,
     },
 }

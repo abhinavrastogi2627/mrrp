@@ -13,9 +13,15 @@ use mrrp::{
     },
     modem::fm::FmDemodulator,
     rtl_sdr,
-    signal::GetSampleRate,
+    signal::{
+        Frequency,
+        GetSampleRate,
+    },
 };
-use mrrp_filter::AsyncReadSamplesFilterExt;
+use mrrp_filter::{
+    AsyncReadSamplesFilterExt,
+    fir::FirFilter,
+};
 use mrrp_util::signal::AsyncReadSamplesExt;
 use num_complex::Complex;
 use tokio::signal::ctrl_c;
@@ -32,11 +38,11 @@ async fn main() -> Result<(), Error> {
     let args = Args::parse();
 
     // The desired audio sample rate.
-    const AUDIO_SAMPLE_RATE: f32 = 44_100.0;
+    const AUDIO_SAMPLE_RATE: Frequency = 44_100.0;
 
     // We use the default sampling rate of the RTL-SDR.
     // Note that we can't sample the RTL-SDR at our desired audio sampling rate.
-    const RTLSDR_SAMPLE_RATE: f32 = 2_400_000.0; // 2.4 MHz
+    const RTLSDR_SAMPLE_RATE: Frequency = 2_400_000.0; // 2.4 MHz
 
     // Open the RTL-SDR and get a complex IQ stream
     let mut rtl_sdr = rtl_sdr::open_any(Default::default()).await?;
@@ -66,8 +72,16 @@ async fn main() -> Result<(), Error> {
         |i, e| i >= 20 || e < 1e-6,
     )?;*/
     println!("filter design: {filter_design:#?}");
+    // <https://github.com/jgraef/mrrp/issues/53>
+    let filter = FirFilter::new(
+        filter_design
+            .coefficients()
+            .iter()
+            .map(|c| *c as f32)
+            .collect(),
+    );
 
-    let filtered_baseband = converted.scan_in_place_with(filter_design.fir_filter());
+    let filtered_baseband = converted.scan_in_place_with(filter);
 
     let demodulated = filtered_baseband.scan_with(FmDemodulator::new(sample_rate, 75_000.0));
 
@@ -101,7 +115,7 @@ async fn main() -> Result<(), Error> {
 
 #[derive(Debug, clap::Parser)]
 struct Args {
-    frequency: f32,
+    frequency: Frequency,
 
     #[clap(short, long, default_value = "0")]
     device: u32,

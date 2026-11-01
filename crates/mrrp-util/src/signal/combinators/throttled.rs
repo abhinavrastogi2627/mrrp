@@ -18,6 +18,7 @@ use futures_util::{
 use mrrp_core::signal::{
     AsyncWriteSamples,
     FiniteStream,
+    Frequency,
     GetSampleRate,
     Remaining,
     SizeHint,
@@ -130,7 +131,7 @@ where
     R: GetSampleRate,
 {
     #[inline]
-    fn sample_rate(&self) -> f32 {
+    fn sample_rate(&self) -> Frequency {
         self.inner.sample_rate()
     }
 }

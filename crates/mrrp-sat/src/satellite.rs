@@ -26,7 +26,10 @@ use chrono::{
     Utc,
 };
 use itertools::Either;
-use mrrp_core::consts::f64::C;
+use mrrp_core::{
+    consts::f64::C,
+    signal::Frequency,
+};
 use mrrp_geo::Geodetic;
 use numeris::{
     Quaternion,
@@ -698,13 +701,13 @@ impl RelativeState {
 
     /// Free-space Path Loss in dB
     #[inline]
-    pub fn free_space_path_loss_db(&self, frequency: f64) -> f64 {
+    pub fn free_space_path_loss_db(&self, frequency: Frequency) -> f64 {
         free_space_path_loss_db(self.distance(), frequency)
     }
 
     /// Doppler shift in Hz
     #[inline]
-    pub fn doppler_shift(&self, frequency: f64) -> f64 {
+    pub fn doppler_shift(&self, frequency: Frequency) -> Frequency {
         doppler_shift(self.radial_speed(), frequency)
     }
 
@@ -717,13 +720,13 @@ impl RelativeState {
 
 /// Free-space Path Loss in dB
 #[inline]
-pub fn free_space_path_loss_db(distance: f64, frequency: f64) -> f64 {
+pub fn free_space_path_loss_db(distance: f64, frequency: Frequency) -> f64 {
     20.0 * (distance.log10() + frequency.log10() + (4.0 * PI / C))
 }
 
 /// Doppler shift in Hz
 #[inline]
-pub fn doppler_shift(radial_speed: f64, frequency: f64) -> f64 {
+pub fn doppler_shift(radial_speed: f64, frequency: Frequency) -> f64 {
     // https://en.wikipedia.org/wiki/Doppler_effect#Satellite_communication
     radial_speed * frequency / C
 }

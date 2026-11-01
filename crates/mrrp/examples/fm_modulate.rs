@@ -23,6 +23,7 @@ use mrrp::{
         GetSampleRate,
     },
 };
+use mrrp_filter::fir::FirFilter;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -53,8 +54,16 @@ async fn main() -> Result<(), Error> {
     )
     .unwrap();
     println!("filter design: {filter_design:#?}");
+    // <https://github.com/jgraef/mrrp/issues/53>
+    let filter = FirFilter::new(
+        filter_design
+            .coefficients()
+            .iter()
+            .map(|c| *c as f32)
+            .collect(),
+    );
 
-    let filtered = fm_modulated.scan_in_place_with(filter_design.fir_filter());
+    let filtered = fm_modulated.scan_in_place_with(filter);
     println!("output sample rate: {}", filtered.sample_rate());
 
     if let Some(output) = &args.file_output {

@@ -9,6 +9,7 @@ use std::{
 
 use mrrp_core::signal::{
     FiniteStream,
+    Frequency,
     GetSampleRate,
     Remaining,
     SizeHint,
@@ -76,7 +77,7 @@ where
     R: GetSampleRate,
 {
     #[inline]
-    fn sample_rate(&self) -> f32 {
+    fn sample_rate(&self) -> Frequency {
         self.inner.sample_rate()
     }
 }

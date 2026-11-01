@@ -23,9 +23,12 @@ use anyhow::{
     Error,
     anyhow,
 };
-use mrrp_core::buf::{
-    SampleBufMut,
-    SamplesMut,
+use mrrp_core::{
+    buf::{
+        SampleBufMut,
+        SamplesMut,
+    },
+    signal::Frequency,
 };
 use num_complex::Complex;
 use rustfft::FftPlanner;
@@ -254,7 +257,7 @@ impl Sources {
     pub async fn set_center_frequency(
         &mut self,
         id: usize,
-        center_frequency: f32,
+        center_frequency: Frequency,
     ) -> Result<(), Error> {
         let source = self
             .buffered_sources
@@ -506,7 +509,7 @@ enum Command {
     },
     SetCenterFrequency {
         id: usize,
-        center_frequency: f32,
+        center_frequency: Frequency,
         result_sender: oneshot::Sender<Result<(), Error>>,
     },
 }
@@ -600,7 +603,7 @@ impl SourceHandle {
         &self.name
     }
 
-    pub async fn set_center_frequency(&self, center_frequency: f32) -> Result<(), Error> {
+    pub async fn set_center_frequency(&self, center_frequency: Frequency) -> Result<(), Error> {
         let (result_sender, result_receiver) = oneshot::channel();
 
         self.inner.send_command(Command::SetCenterFrequency {

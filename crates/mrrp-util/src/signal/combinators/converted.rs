@@ -11,6 +11,7 @@ use mrrp_core::{
     sample::FromSample,
     signal::{
         FiniteStream,
+        Frequency,
         GetSampleRate,
         Remaining,
         SizeHint,
@@ -101,7 +102,7 @@ where
     R: AsyncReadSamples + GetSampleRate,
 {
     #[inline]
-    fn sample_rate(&self) -> f32 {
+    fn sample_rate(&self) -> Frequency {
         self.inner.sample_rate()
     }
 }

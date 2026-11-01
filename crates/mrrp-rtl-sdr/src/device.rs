@@ -27,6 +27,7 @@ use tokio::{
 
 use crate::{
     Error,
+    Frequency,
     enumerate::DeviceInfo,
     rtl2832u::{
         self,
@@ -96,12 +97,12 @@ pub struct Device {
     frequency_correction: i16,
 
     /// The current center frequency
-    center_frequency: Option<f32>,
+    center_frequency: Option<Frequency>,
 
     /// Gain values in dB that are available with the tuner.
     tuner_gains: Vec<f32>,
 
-    if_offset: f32,
+    if_offset: Frequency,
 }
 
 impl Device {
@@ -203,13 +204,13 @@ impl Device {
     }
 
     #[inline]
-    pub fn sample_rate(&self) -> f32 {
+    pub fn sample_rate(&self) -> Frequency {
         let state_guard = self.shared.state.read();
         state_guard.sample_rate
     }
 
     #[inline]
-    pub fn center_frequency(&self) -> Option<f32> {
+    pub fn center_frequency(&self) -> Option<Frequency> {
         self.center_frequency
     }
 
@@ -276,7 +277,7 @@ impl Device {
         Ok(())
     }
 
-    pub async fn set_sample_rate(&mut self, sample_rate: f32) -> Result<(), Error> {
+    pub async fn set_sample_rate(&mut self, sample_rate: Frequency) -> Result<(), Error> {
         tracing::debug!(?sample_rate, "setting sample rate");
 
         let inner = &mut *self.shared.lock_inner().await;
@@ -284,7 +285,7 @@ impl Device {
         // set rtl2832u's sample rate.
         //
         // this returns the sample rate that we actually get.
-        let actual_sample_rate = inner.rtl2832u.set_sample_rate(sample_rate as f32).await?;
+        let actual_sample_rate = inner.rtl2832u.set_sample_rate(sample_rate).await?;
         tracing::debug!(?actual_sample_rate);
 
         {
@@ -296,8 +297,8 @@ impl Device {
                 .set_bandwidth(&mut *i2c_repeater_guard, actual_sample_rate)
                 .await?;
 
-            // after changing the tuner bandwidth, its if frequency changes,
-            // which means we're not tuned correctly anymore.
+            // after changing the tuner bandwidth, its if frequency might
+            // change, which means we're not tuned correctly anymore.
             if let Some(center_frequency) = self.center_frequency {
                 inner
                     .tuner
@@ -339,7 +340,7 @@ impl Device {
         Ok(())
     }
 
-    pub async fn set_center_frequency(&mut self, center_frequency: f32) -> Result<(), Error> {
+    pub async fn set_center_frequency(&mut self, center_frequency: Frequency) -> Result<(), Error> {
         tracing::debug!(?center_frequency, "setting center frequency");
 
         let Inner { rtl2832u, tuner } = &mut *self.shared.lock_inner().await;
@@ -362,7 +363,7 @@ impl Device {
         Ok(())
     }
 
-    pub async fn set_if_offset(&mut self, if_offset: f32) -> Result<(), Error> {
+    pub async fn set_if_offset(&mut self, if_offset: Frequency) -> Result<(), Error> {
         tracing::debug!(?if_offset, "setting IF offset");
 
         self.if_offset = if_offset;
@@ -608,7 +609,7 @@ impl mrrp_core::signal::StreamLength for Reader {
 
 #[cfg(feature = "mrrp")]
 impl mrrp_core::signal::GetSampleRate for Reader {
-    fn sample_rate(&self) -> f32 {
+    fn sample_rate(&self) -> mrrp_core::signal::Frequency {
         let state_guard = self.shared.state.read();
         state_guard.sample_rate
     }
@@ -644,7 +645,7 @@ impl Inner {
         Ok(())
     }
 
-    async fn configure_if(&mut self, mut if_offset: f32) -> Result<(), Error> {
+    async fn configure_if(&mut self, mut if_offset: Frequency) -> Result<(), Error> {
         let if_setting = self.tuner.if_setting();
 
         tracing::debug!(?if_setting, "setting IF");
@@ -686,7 +687,7 @@ impl Inner {
 #[derive(Debug)]
 struct SharedState {
     /// The current sample rate
-    sample_rate: f32,
+    sample_rate: Frequency,
 }
 
 /// This contains the devices and some shared state

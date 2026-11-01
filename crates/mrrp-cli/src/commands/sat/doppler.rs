@@ -16,6 +16,7 @@ use mrrp_core::{
     sample::Complex,
     signal::{
         FiniteStream,
+        Frequency,
         GetSampleRate,
     },
 };
@@ -34,7 +35,7 @@ use mrrp_util::signal::AsyncReadSamplesExt;
 pub async fn correct(
     satellite: &Satellite,
     location: Geodetic,
-    nominal_frequency: f32,
+    nominal_frequency: Frequency,
     start_time: DateTime<Utc>,
     predict_interval: Duration,
     input: impl AsRef<Path>,
@@ -47,7 +48,7 @@ pub async fn correct(
 
     // open source file
     let source = WavSource::<_, Complex<i16>>::from_path(&input)?.convert::<Complex<f32>>();
-    let duration = Duration::from_secs_f32(source.len() as f32 / source.sample_rate());
+    let duration = Duration::from_secs_f64(source.len() as f64 / source.sample_rate());
 
     let doppler_correction = DopplerCorrection::from_satellite(
         satellite,
