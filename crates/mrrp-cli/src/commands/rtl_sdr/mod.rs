@@ -28,13 +28,17 @@ use clap::{
     Parser,
     Subcommand,
 };
+use futures_util::StreamExt;
 use mrrp_audio::write_stream_to_wav;
 use mrrp_core::{
     sample::Complex,
     signal::Frequency,
 };
-use mrrp_rtl_sdr::rtl2832u::register::{
-    self as reg,
+use mrrp_rtl_sdr::{
+    enumerate::HotplugEvent,
+    rtl2832u::register::{
+        self as reg,
+    },
 };
 use mrrp_util::signal::AsyncReadSamplesExt;
 use tokio::{
@@ -70,6 +74,20 @@ pub async fn run(args: Args, _context: Context) -> Result<(), Error> {
         Command::List => {
             for device_info in mrrp_rtl_sdr::enumerate_devices().await? {
                 println!("{device_info:#?}");
+            }
+        }
+        Command::Watch => {
+            let mut events = mrrp_rtl_sdr::enumerate::watch_devices()?;
+
+            while let Some(event) = events.next().await {
+                match event {
+                    HotplugEvent::Connected { device_info } => {
+                        println!("Device connected: {device_info:#?}");
+                    }
+                    HotplugEvent::Disconnected { device_info } => {
+                        println!("Device disconnected: {:?}", device_info.name());
+                    }
+                }
             }
         }
         Command::PoweronDemod { device } => {
@@ -407,6 +425,8 @@ pub struct Args {
 enum Command {
     /// List available devices
     List,
+    /// Watch for devices being connected or disconnected
+    Watch,
     /// Power-on the DEMOD chip.
     ///
     /// This can be useful for e.g. dumping its registers

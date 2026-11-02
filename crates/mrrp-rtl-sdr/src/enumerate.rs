@@ -3,7 +3,17 @@
 use std::{
     borrow::Cow,
     collections::HashMap,
+    pin::Pin,
     sync::OnceLock,
+    task::{
+        Context,
+        Poll,
+    },
+};
+
+use futures_util::{
+    Stream,
+    StreamExt,
 };
 
 use crate::{
@@ -27,6 +37,14 @@ use crate::{
 pub async fn enumerate_devices() -> Result<EnumerateDevices, Error> {
     Ok(EnumerateDevices {
         devices: Box::new(nusb::list_devices().await?),
+        known_devices: BuiltinKnownDevices::builtin(),
+    })
+}
+
+pub fn watch_devices() -> Result<WatchDevices, Error> {
+    Ok(WatchDevices {
+        events: nusb::watch_devices()?,
+        matched_device_ids: HashMap::new(),
         known_devices: BuiltinKnownDevices::builtin(),
     })
 }
@@ -77,6 +95,75 @@ where
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.devices.size_hint()
     }
+}
+
+/// Stream over hot-plug events for devices.
+///
+/// Yields [`HotplugEvent`].
+#[derive(derive_more::Debug)]
+pub struct WatchDevices<K = &'static BuiltinKnownDevices> {
+    #[debug(skip)]
+    events: nusb::hotplug::HotplugWatch,
+
+    matched_device_ids: HashMap<nusb::DeviceId, DeviceInfo>,
+
+    known_devices: K,
+}
+
+impl<K> WatchDevices<K> {
+    /// Use a different method of detecting known devices.
+    ///
+    /// The argument `known_devices` must implement [`KnownDevices`] for
+    /// [`EnumerateDevices`] to still work.
+    pub fn with_known_devices<K2>(self, known_devices: K2) -> WatchDevices<K2> {
+        WatchDevices {
+            events: self.events,
+            matched_device_ids: self.matched_device_ids,
+            known_devices,
+        }
+    }
+}
+
+impl<K> Stream for WatchDevices<K>
+where
+    K: KnownDevices + Unpin,
+{
+    type Item = HotplugEvent;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let this = &mut *self;
+
+        loop {
+            match this.events.poll_next_unpin(cx) {
+                Poll::Pending => return Poll::Pending,
+                Poll::Ready(None) => return Poll::Ready(None),
+                Poll::Ready(Some(nusb::hotplug::HotplugEvent::Connected(device_info))) => {
+                    if let Some(known_device) = this.known_devices.detect(&device_info) {
+                        let device_info = DeviceInfo {
+                            usb: device_info,
+                            device_config: known_device,
+                        };
+
+                        this.matched_device_ids
+                            .insert(device_info.usb.id(), device_info.clone());
+
+                        return Poll::Ready(Some(HotplugEvent::Connected { device_info }));
+                    }
+                }
+                Poll::Ready(Some(nusb::hotplug::HotplugEvent::Disconnected(device_id))) => {
+                    if let Some(device_info) = this.matched_device_ids.remove(&device_id) {
+                        return Poll::Ready(Some(HotplugEvent::Disconnected { device_info }));
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum HotplugEvent {
+    Connected { device_info: DeviceInfo },
+    Disconnected { device_info: DeviceInfo },
 }
 
 /// A discovered RTL8232U device.
